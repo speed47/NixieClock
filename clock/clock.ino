@@ -59,6 +59,7 @@ char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
 clockMode mode = CLOCK;
 dotMode dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
+int want_transition_now = 0;
 
 unsigned int getTime()
 {
@@ -129,14 +130,22 @@ void handleSerial(char const* buffer, int len)
    if(*buffer == 'C' && len == 1)
    {
      mode = CLOCK;
+     Serial1.println("Clock mode active");
    }
    else if(*buffer == 'c' && len == 1)
    {
      mode = COUNTER;
+     Serial1.println("Counter mode active");
    }
    else if (*buffer == 'A' && len == 1)
    {
      mode = BIRTHDAY;
+     Serial1.println("Birthday mode active");
+   }
+   else if (*buffer == 't' && len == 1)
+   {
+     want_transition_now = 1;
+     Serial1.println("Asked for a new transition now");
    }
    else if(*buffer == 'T' && len == 7)
    {
@@ -151,6 +160,19 @@ void handleSerial(char const* buffer, int len)
        buffer += 2;
      }
      rtc_set(newTime);
+     Serial1.println("Time set");
+   }
+   else
+   {
+     Serial1.println("This is NixieClock Software v0.1");
+     Serial1.print("Unknown command <");
+     Serial1.print(*buffer);
+     Serial1.println(">. Supported commands are:");
+     Serial1.println("A : birthday mode");
+     Serial1.println("C : clock mode");
+     Serial1.println("c : counter mode");
+     Serial1.println("t : ask for a new transition now");
+     Serial1.println("THHMMSS : set time, e.g. T123759\n");
    }
 }
 
@@ -337,6 +359,13 @@ void clock()
   // transition test
   static int transitioning = 1;
   static unsigned int transition_started_at = 0;
+
+  if (want_transition_now)
+  {
+    want_transition_now = 0;
+    transitioning = 1;
+    transition_started_at = 0;
+  }
 
   if (frameBuffer.digits[5] == 4 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transitioning == 0)
   {
