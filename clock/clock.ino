@@ -2,6 +2,8 @@
 #include "ws2811.h"
 #include "makeColor.h"
 
+#define WANT_FADING
+
 /* Configuration pins */
 
 const int dot1Pin = 3;
@@ -56,6 +58,7 @@ frameBuffer_t frameBuffer;
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
 clockMode mode = CLOCK;
+dotMode dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
 
 unsigned int getTime()
 {
@@ -204,14 +207,16 @@ void clock()
 {
   static unsigned int frame = 0;
   frame++;
-
-  // Get Current Time
-  unsigned int currentTime = getTime();
   
+  // Get Current Time
+  unsigned int currentTime = getTime(); // might be modified by fading
+  unsigned int currentTimeReal = currentTime; // we need the real unmodified currentTime later (at least for some dot modes)
+  
+  #ifdef WANT_FADING
   /* During 250ms display progressive change between numbers */
   /* TODO: need more testing */
   // 125ms after change
-  /*if(RTC_TPR < 4096)
+  if(RTC_TPR < 4096)
   {
     // 50 => 100%
     uint8_t percent = 4 + ((4 * RTC_TPR) / 4096);
@@ -241,16 +246,70 @@ void clock()
   else
   {
     currentTime = getTime();
-  }*/
+  }
+  #else
   currentTime = getTime();
+  #endif
 
   /* UPDATE DOTS */
-  frameBuffer.dots[0] = ((currentTime % 6)==0);
-  frameBuffer.dots[1] = ((currentTime % 6)==1);
-  frameBuffer.dots[2] = ((currentTime % 6)==2);
-  frameBuffer.dots[3] = ((currentTime % 6)==3);
-  frameBuffer.dots[4] = ((currentTime % 6)==4);
-  frameBuffer.dots[5] = ((currentTime % 6)==5);
+  if (dot_mode == DOT_MODE_CHASE)
+  {
+    // yes, we could use loops below, but this way right values are computed at compile time and we're freaking fast
+    if (currentTimeReal % 4 == 0)
+    {
+      frameBuffer.dots[5] = (RTC_TPR > 32768/7*1);
+      frameBuffer.dots[4] = (RTC_TPR > 32768/7*2);
+      frameBuffer.dots[3] = (RTC_TPR > 32768/7*3);
+      frameBuffer.dots[2] = (RTC_TPR > 32768/7*4);
+      frameBuffer.dots[1] = (RTC_TPR > 32768/7*5);
+      frameBuffer.dots[0] = (RTC_TPR > 32768/7*6);
+    }
+    else if (currentTimeReal % 4 == 1)
+    {
+      frameBuffer.dots[5] = (RTC_TPR < 32768/7*1);
+      frameBuffer.dots[4] = (RTC_TPR < 32768/7*2);
+      frameBuffer.dots[3] = (RTC_TPR < 32768/7*3);
+      frameBuffer.dots[2] = (RTC_TPR < 32768/7*4);
+      frameBuffer.dots[1] = (RTC_TPR < 32768/7*5);
+      frameBuffer.dots[0] = (RTC_TPR < 32768/7*6);
+    }
+    else if (currentTimeReal % 4 == 2)
+    {
+      frameBuffer.dots[5] = (RTC_TPR > 32768/7*6);
+      frameBuffer.dots[4] = (RTC_TPR > 32768/7*5);
+      frameBuffer.dots[3] = (RTC_TPR > 32768/7*4);
+      frameBuffer.dots[2] = (RTC_TPR > 32768/7*3);
+      frameBuffer.dots[1] = (RTC_TPR > 32768/7*2);
+      frameBuffer.dots[0] = (RTC_TPR > 32768/7*1);
+    }
+    else // aka (currentTimeReal % 4 == 3)
+    {
+      frameBuffer.dots[5] = (RTC_TPR < 32768/7*6);
+      frameBuffer.dots[4] = (RTC_TPR < 32768/7*5);
+      frameBuffer.dots[3] = (RTC_TPR < 32768/7*4);
+      frameBuffer.dots[2] = (RTC_TPR < 32768/7*3);
+      frameBuffer.dots[1] = (RTC_TPR < 32768/7*2);
+      frameBuffer.dots[0] = (RTC_TPR < 32768/7*1);
+    }
+  }
+  else if (dot_mode == DOT_MODE_CLASSIC)
+  {
+    frameBuffer.dots[0] = ((currentTime % 6)==0);
+    frameBuffer.dots[1] = ((currentTime % 6)==1);
+    frameBuffer.dots[2] = ((currentTime % 6)==2);
+    frameBuffer.dots[3] = ((currentTime % 6)==3);
+    frameBuffer.dots[4] = ((currentTime % 6)==4);
+    frameBuffer.dots[5] = ((currentTime % 6)==5);
+  }
+  else if (dot_mode == DOT_MODE_PROGRESSIVE)
+  {
+    frameBuffer.dots[5] = (RTC_TPR >= 32768/7*1);
+    frameBuffer.dots[4] = (RTC_TPR >= 32768/7*2);
+    frameBuffer.dots[3] = (RTC_TPR >= 32768/7*3);
+    frameBuffer.dots[2] = (RTC_TPR >= 32768/7*4);
+    frameBuffer.dots[1] = (RTC_TPR >= 32768/7*5);
+    frameBuffer.dots[0] = (RTC_TPR >= 32768/7*6);
+  }
   
   /* UPDATE LEDS */
   // Slow rainbow, same color on each led
@@ -263,17 +322,90 @@ void clock()
   // Seconds
   frameBuffer.digits[5] = currentTime % 10;
   currentTime /= 10;
-  frameBuffer.digits[4] = currentTime%6;
+  frameBuffer.digits[4] = currentTime % 6;
   currentTime /= 6;
   // Minutes
   frameBuffer.digits[3] = currentTime % 10;
   currentTime /= 10;
-  frameBuffer.digits[2] = currentTime%6;
+  frameBuffer.digits[2] = currentTime % 6;
   currentTime /= 6;
   // Hours
-  unsigned int hours = currentTime%24;
+  unsigned int hours = currentTime % 24;
   frameBuffer.digits[1] = hours % 10;
   frameBuffer.digits[0] = hours / 10;
+  
+  // transition test
+  static int transitioning = 1;
+  static unsigned int transition_started_at = 0;
+
+  if (frameBuffer.digits[5] == 4 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transitioning == 0)
+  {
+    transitioning = 1;
+    transition_started_at = 0;
+  }
+
+  if (transitioning == 1)
+  {
+    static unsigned int lastTime = getTime();
+    static int frozenNixies[6];
+    currentTime = getTime();
+    if (transition_started_at == 0)
+    {
+      // first loop, init stuff
+      transition_started_at = currentTime;
+      for (int i = 0; i < 6; i++)
+      {
+        frozenNixies[i] = 0;
+      }
+    }
+    // transition lasts 2 + 6 seconds
+    if (transition_started_at + 2 + 5 >= currentTime)
+    {
+      if (transition_started_at + 2 <= currentTime && lastTime != currentTime)
+      {
+        // another elapsed second, freezing another nixie
+        // FIXME ugly, theoretically possible infinite loop
+        for (int antiloop = 0; antiloop < 1000; antiloop++)
+        {
+          int index = rand() % 6;
+          if (frozenNixies[index] == 0)
+          {
+            frozenNixies[index] = 1;
+            break;
+          }
+        }
+      }
+      // randomize digits on the non-frozen nixies
+      for (int i = 0; i < 6; i++)
+      {
+        if (frozenNixies[i] == 0)
+        {
+          frameBuffer.digits[i] = rand() % 10;
+        }
+      }
+      // random color on the leds, one different each 16 frames
+      static int hue = rand() % 360;
+      if (frame % 16 == 0)
+      {
+        hue = rand() % 360;
+      }
+      for(int i = 0; i < 6; i++)
+      {
+        if (frozenNixies[i] == 0)
+        {
+          makeColor(hue, 100, 50, &frameBuffer.leds[3*i]);
+        }
+      }
+      // between seconds 3 and 3+nb(nixies), freeze a nixie each second
+    }
+    else
+    {
+      // transition is done
+      transition_started_at = 0;
+      transitioning = 0;
+    }
+    lastTime = currentTime;
+  }
 }
 
 void counter()

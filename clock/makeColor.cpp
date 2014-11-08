@@ -13,7 +13,9 @@ void makeColor(unsigned int hue, unsigned int saturation, unsigned int lightness
 {
 	unsigned int red, green, blue;
 	unsigned int var1, var2;
-
+ 
+	lightness /= LED_LIGHTNESS_DIVIDER;
+ 
 	if (hue > 359) hue = hue % 360;
 	if (saturation > 100) saturation = 100;
 	if (lightness > 100) lightness = 100;

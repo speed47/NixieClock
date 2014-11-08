@@ -26,4 +26,6 @@ typedef struct
 
 enum clockMode { COUNTER, CLOCK, BIRTHDAY };
 
+enum dotMode { DOT_MODE_CLASSIC, DOT_MODE_PROGRESSIVE, DOT_MODE_CHASE };
+
 #endif
