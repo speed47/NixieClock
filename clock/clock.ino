@@ -61,6 +61,7 @@ clockMode config_clock_mode = CLOCK_MODE_CLOCK;
 dotMode config_dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
 int config_showfps = 1; // default value, can be configured via bt
 int config_want_transition_now = 0;
+unsigned long config_countdown_ms = 0;
 
 unsigned int getTime()
 {
@@ -98,11 +99,18 @@ void loop()
     case CLOCK_MODE_BIRTHDAY:
       birthday();
       break;
+
+    case CLOCK_MODE_COUNTDOWN:
+      countdown();
+      break;
   }
-  
+
+  // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
+  securityNixieDot();
+
   // Update Leds
   updateLeds(ledsPin, frameBuffer.leds, 6);
-  
+
   // Update nixies dots
   updateDots();
   
@@ -188,6 +196,14 @@ void handleSerial(char const* buffer, int len)
      rtc_set(newTime);
      Serial1.println("Time set");
    }
+   else if(*buffer == 'D' && len == 5)
+   {
+     buffer++;
+     config_clock_mode = CLOCK_MODE_COUNTDOWN;
+     config_countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
+     Serial1.print("Counting down to ");
+     Serial1.println(config_countdown_ms, DEC);
+   }
    else if (len > 0)
    {
      Serial1.println("This is NixieClock Software v0.1");
@@ -199,8 +215,14 @@ void handleSerial(char const* buffer, int len)
      Serial1.println("c : counter mode");
      Serial1.println("t : ask for a new transition now");
      Serial1.println("f : toggle showfps");
-     Serial1.println("THHMMSS : set time, e.g. T123759\n");
+     Serial1.println("THHMMSS : set time, e.g. T123759");
+     Serial1.println("DMMSS : countDown of MMSS, e.g. D9000 for 90 minutes");
    }
+}
+
+void securityNixieDot()
+{
+  ; // TODO: implement me
 }
 
 // Output subs, handle dots, nixie
@@ -251,6 +273,44 @@ void updateNixie(unsigned int frame)
   }
 }
 
+// helper functions
+void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)
+{
+  if (split_mode == SPLIT_HMS)
+  {
+    // here, input is seconds
+    // Seconds
+    frameBuffer.digits[5] = time % 10;
+    time /= 10;
+    frameBuffer.digits[4] = time % 6;
+    time /= 6;
+    // Minutes
+    frameBuffer.digits[3] = time % 10;
+    time /= 10;
+    frameBuffer.digits[2] = time % 6;
+    time /= 6;
+    // Hours
+    unsigned int hours = time % 24;
+    frameBuffer.digits[1] = hours % 10;
+    frameBuffer.digits[0] = hours / 10;
+  }
+  else if (split_mode == SPLIT_MSC)
+  {
+    // here, time is milliseconds
+    frameBuffer.digits[5] = time % 100 / 10;
+    time /= 100; // now deciseconds
+    frameBuffer.digits[4] = time % 10;
+    time /= 10; // now seconds
+    frameBuffer.digits[3] = time % 10;
+    time /= 10; // now 10x seconds
+    frameBuffer.digits[2] = time % 6;
+    time /= 6; // now minutes
+    frameBuffer.digits[1] = time % 10;
+    time /= 10; // now 10x minutes
+    frameBuffer.digits[0] = time % 6;
+  }
+}
+
 // Generator functions
 void clock()
 {
@@ -258,7 +318,7 @@ void clock()
   frame++;
   
   // Get Current Time
-  unsigned int currentTime = getTime(); // might be modified by fading
+  unsigned int currentTime = getTime(); // might be modified +/- 1 by fading algo
   unsigned int currentTimeReal = currentTime; // we need the real unmodified currentTime later (at least for some dot modes)
   
   #ifdef WANT_FADING
@@ -368,98 +428,65 @@ void clock()
   }
 
   /* SPLIT TIME in the 6 digits */  
-  // Seconds
-  frameBuffer.digits[5] = currentTime % 10;
-  currentTime /= 10;
-  frameBuffer.digits[4] = currentTime % 6;
-  currentTime /= 6;
-  // Minutes
-  frameBuffer.digits[3] = currentTime % 10;
-  currentTime /= 10;
-  frameBuffer.digits[2] = currentTime % 6;
-  currentTime /= 6;
-  // Hours
-  unsigned int hours = currentTime % 24;
-  frameBuffer.digits[1] = hours % 10;
-  frameBuffer.digits[0] = hours / 10;
+  splitTimeToFramebuffer(currentTime, SPLIT_HMS);
   
   // transition test
-  static int transitioning = 0;
-  static unsigned int transition_started_at = 0;
+  static int transition_step = 0;
 
   if (config_want_transition_now > 0)
   {
     config_want_transition_now = 0;
-    transitioning = 1;
-    transition_started_at = 0;
+    transition_step = 1;
   }
 
-  if (frameBuffer.digits[5] == 4 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transitioning == 0)
+  if (frameBuffer.digits[5] == 3 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transition_step == 0)
   {
-    transitioning = 1;
-    transition_started_at = 0;
+    transition_step = 1;
   }
 
-  if (transitioning == 1)
+  if (transition_step > 0)
   {
     static unsigned int lastTime = getTime();
-    static int frozenNixies[6];
     currentTime = getTime();
-    if (transition_started_at == 0)
+    /* steps :
+    1 => set vars to their init value then set step=2
+    2, 3 => casinoize all nixies (2 seconds)
+    4 5 6 7 8 => casinoize respectively 5, 4, 3, 2, then 1 nixie (1 second each)
+    9 => transition done, set step back to 0 (which means: no transition)
+    */
+    if (transition_step == 1) // first loop, init stuff
     {
-      // first loop, init stuff
-      transition_started_at = currentTime;
-      for (int i = 0; i < 6; i++)
-      {
-        frozenNixies[i] = 0;
-      }
+      dbg("step 1 => 2");
+      transition_step = 2;
     }
-    // transition lasts 2 + 6 seconds
-    if (transition_started_at + 2 + 5 >= currentTime)
+    else if (transition_step >= 2 and transition_step <= 9)
     {
-      if (transition_started_at + 2 <= currentTime && lastTime != currentTime)
+      if (currentTime != lastTime)
       {
-        // another elapsed second, freezing another nixie
-        // FIXME ugly, theoretically possible infinite loop
-        for (int antiloop = 0; antiloop < 1000; antiloop++)
-        {
-          int index = rand() % 6;
-          if (frozenNixies[index] == 0)
-          {
-            frozenNixies[index] = 1;
-            break;
-          }
-        }
+        dbg("step++");
+        transition_step++;
       }
-      // randomize digits on the non-frozen nixies
-      for (int i = 0; i < 6; i++)
-      {
-        if (frozenNixies[i] == 0)
-        {
-          frameBuffer.digits[i] = rand() % 10;
-        }
-      }
-      // random color on the leds, one different each 16 frames
-      static int hue = rand() % 360;
-      if (frame % 16 == 0)
-      {
-        hue = rand() % 360;
-      }
-      for(int i = 0; i < 6; i++)
-      {
-        if (frozenNixies[i] == 0)
-        {
-          makeColor(hue, 100, 50, &frameBuffer.leds[3*i]);
-        }
-      }
-      // between seconds 3 and 3+nb(nixies), freeze a nixie each second
     }
     else
     {
-      // transition is done
-      transition_started_at = 0;
-      transitioning = 0;
+      dbg("transition done!");
+      transition_step = 0; // done!
     }
+
+    // random color on the leds, one different each 16 frames
+    static int hue = rand() % 360;
+    if (frame % 16 == 0)
+    {
+      hue = rand() % 360;
+    }
+
+    // casino-ize proper nixies
+    for (int i = max(transition_step - 4, 0); i < 6; i++)
+    {
+       frameBuffer.digits[i] = rand() % 10;
+       makeColor(hue, 100, 50, &frameBuffer.leds[3*(5-i)]); // led order is reversed on my board :)
+    }
+
     lastTime = currentTime;
   }
 }
@@ -513,3 +540,26 @@ void birthday()
   frameBuffer.dots[4] = 0;
   frameBuffer.dots[5] = 0;
 }
+
+void countdown()
+{
+  // TODO do something with the leds
+  // TODO do something with the nixie dots (allow classic use of DOT_MODE_* ?)
+  static unsigned long target_millis = 0; // FIXME: millis() counter reset is not taken into account
+  if (config_countdown_ms > 0)
+  {
+    target_millis = millis() + config_countdown_ms;
+    config_countdown_ms = 0;
+  }
+  signed long remaining_millis = target_millis - millis();
+  if (remaining_millis >= 0)
+  {
+    splitTimeToFramebuffer(remaining_millis, SPLIT_MSC);
+  }
+  else
+  {
+    // TODO do something fancy when the time is up, before restoring the clock
+    config_clock_mode = CLOCK_MODE_CLOCK;
+  }
+}
+
