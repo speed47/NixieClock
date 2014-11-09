@@ -24,7 +24,7 @@ typedef struct
   uint8_t leds[18];
 } frameBuffer_t;
 
-enum clockMode { COUNTER, CLOCK, BIRTHDAY };
+enum clockMode { CLOCK_MODE_COUNTER, CLOCK_MODE_CLOCK, CLOCK_MODE_BIRTHDAY };
 
 enum dotMode { DOT_MODE_CLASSIC, DOT_MODE_PROGRESSIVE, DOT_MODE_CHASE };
 

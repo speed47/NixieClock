@@ -57,9 +57,10 @@ void setup() {
 frameBuffer_t frameBuffer;
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
-clockMode mode = CLOCK;
-dotMode dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
-int want_transition_now = 0;
+clockMode config_clock_mode = CLOCK_MODE_CLOCK;
+dotMode config_dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
+int config_showfps = 1; // default value, can be configured via bt
+int config_want_transition_now = 0;
 
 unsigned int getTime()
 {
@@ -69,20 +70,32 @@ unsigned int getTime()
 // Main loop
 void loop()
 {
-  static unsigned int lastEnd = 0;
+  static uint32_t lastEnd = 0;
+  static uint32_t nextFpsMark = 1000*1000;
+  static uint16_t fps = 0;
+  
+  if (config_showfps && lastEnd >= nextFpsMark)
+  {
+    Serial1.print(millis() / 1000, DEC);
+    Serial1.print("s, fps=");
+    Serial1.println(fps, DEC);
+    nextFpsMark = lastEnd + 1000 * 1000;
+    fps = 0;
+  }
+  fps++;
   
   // Generate what to display
-  switch(mode)
+  switch(config_clock_mode)
   {
-    case CLOCK:
+    case CLOCK_MODE_CLOCK:
       clock();
       break;
       
-    case COUNTER:
+    case CLOCK_MODE_COUNTER:
       counter();
       break;
       
-    case BIRTHDAY:
+    case CLOCK_MODE_BIRTHDAY:
       birthday();
       break;
   }
@@ -129,23 +142,36 @@ void handleSerial(char const* buffer, int len)
 {
    if(*buffer == 'C' && len == 1)
    {
-     mode = CLOCK;
-     Serial1.println("Clock mode active");
+     config_clock_mode = CLOCK_MODE_CLOCK;
+     Serial1.println("Clock mode set to CLOCK");
    }
    else if(*buffer == 'c' && len == 1)
    {
-     mode = COUNTER;
-     Serial1.println("Counter mode active");
+     config_clock_mode = CLOCK_MODE_COUNTER;
+     Serial1.println("Clock mode set to COUNTER");
    }
    else if (*buffer == 'A' && len == 1)
    {
-     mode = BIRTHDAY;
-     Serial1.println("Birthday mode active");
+     config_clock_mode = CLOCK_MODE_BIRTHDAY;
+     Serial1.println("Clock mode set to BIRTHDAY");
    }
    else if (*buffer == 't' && len == 1)
    {
-     want_transition_now = 1;
-     Serial1.println("Asked for a new transition now");
+     config_want_transition_now = 1;
+     Serial1.println("Asked for a new transition... NOW!");
+   }
+   else if (*buffer == 'f' && len == 1)
+   {
+     if (config_showfps)
+     {
+       config_showfps = 0;
+       Serial1.println("Show FPS mode is OFF");
+     }
+     else
+     {
+       config_showfps = 1;
+       Serial1.println("Show FPS mode is ON");
+     }
    }
    else if(*buffer == 'T' && len == 7)
    {
@@ -162,7 +188,7 @@ void handleSerial(char const* buffer, int len)
      rtc_set(newTime);
      Serial1.println("Time set");
    }
-   else
+   else if (len > 0)
    {
      Serial1.println("This is NixieClock Software v0.1");
      Serial1.print("Unknown command <");
@@ -172,6 +198,7 @@ void handleSerial(char const* buffer, int len)
      Serial1.println("C : clock mode");
      Serial1.println("c : counter mode");
      Serial1.println("t : ask for a new transition now");
+     Serial1.println("f : toggle showfps");
      Serial1.println("THHMMSS : set time, e.g. T123759\n");
    }
 }
@@ -274,7 +301,7 @@ void clock()
   #endif
 
   /* UPDATE DOTS */
-  if (dot_mode == DOT_MODE_CHASE)
+  if (config_dot_mode == DOT_MODE_CHASE)
   {
     // yes, we could use loops below, but this way right values are computed at compile time and we're freaking fast
     if (currentTimeReal % 4 == 0)
@@ -314,7 +341,7 @@ void clock()
       frameBuffer.dots[0] = (RTC_TPR < 32768/7*1);
     }
   }
-  else if (dot_mode == DOT_MODE_CLASSIC)
+  else if (config_dot_mode == DOT_MODE_CLASSIC)
   {
     frameBuffer.dots[0] = ((currentTime % 6)==0);
     frameBuffer.dots[1] = ((currentTime % 6)==1);
@@ -323,7 +350,7 @@ void clock()
     frameBuffer.dots[4] = ((currentTime % 6)==4);
     frameBuffer.dots[5] = ((currentTime % 6)==5);
   }
-  else if (dot_mode == DOT_MODE_PROGRESSIVE)
+  else if (config_dot_mode == DOT_MODE_PROGRESSIVE)
   {
     frameBuffer.dots[5] = (RTC_TPR >= 32768/7*1);
     frameBuffer.dots[4] = (RTC_TPR >= 32768/7*2);
@@ -357,12 +384,12 @@ void clock()
   frameBuffer.digits[0] = hours / 10;
   
   // transition test
-  static int transitioning = 1;
+  static int transitioning = 0;
   static unsigned int transition_started_at = 0;
 
-  if (want_transition_now)
+  if (config_want_transition_now > 0)
   {
-    want_transition_now = 0;
+    config_want_transition_now = 0;
     transitioning = 1;
     transition_started_at = 0;
   }
