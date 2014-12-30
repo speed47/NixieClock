@@ -5,5 +5,6 @@ void generator_clock();
 void generator_counter();
 void generator_birthday();
 void generator_countdown();
+void generator_newyear();
 
 #endif

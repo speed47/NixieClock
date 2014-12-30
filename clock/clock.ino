@@ -2,6 +2,7 @@
 #include "ws2811.h"
 #include "generators.h"
 #include "globals.h"
+#include <time.h>
 
 #define WANT_FADING
 
@@ -49,6 +50,9 @@ void setup() {
   
   // Leds
   pinMode(ledsPin, OUTPUT);
+
+config_newyear_target = 999+8;
+                rtc_set(0);
   
   // Init wait (pb with ws2811)
   delay(1000);
@@ -57,12 +61,12 @@ void setup() {
 
 // also declared in globals.h for use in other files
 frameBuffer_t frameBuffer;
-void (*generator)(void) = &generator_clock;
+void (*generator)(void) = &generator_newyear;
 dotMode config_dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
 int config_want_transition_now = 0;
 unsigned long config_countdown_ms = 0;
+unsigned int config_newyear_target = 0;
 // end of globals.h
-
 int config_showfps = 1; // default value, can be configured via bt
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
@@ -71,6 +75,7 @@ int serialBufferLen = 0;
 void loop()
 {
   static uint32_t lastEnd = 0;
+#ifdef FALSEEEEE
   static uint32_t nextFpsMark = 1000*1000;
   static uint16_t fps = 0;
   
@@ -83,12 +88,13 @@ void loop()
     fps = 0;
   }
   fps++;
+#endif
   
   // Generate what to display
   generator();
 
   // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
-  securityNixieDot();
+  //securityNixieDot();
 
   // Update Leds
   updateLeds(ledsPin, frameBuffer.leds, 6);
@@ -127,6 +133,29 @@ void loop()
   }  
 }
 
+unsigned int getTimestampFromString(char const* buffer, int len)
+{
+  unsigned int timestamp = 0;
+  for (int i = 0; i < len; i++)
+  {
+    unsigned int digit = buffer[i] - '0';
+    //printf("for i=%d, just read %d\n", i, digit);
+    for (int j = i+1; j < len; j++)
+    {
+     //FIXME missing check for uint overflow... but it's ok for good old unix timestamps
+      digit *= 10;
+      //printf("... j=%d, digit=%u\n", j, digit);
+    }
+    timestamp += digit;
+  }
+  return timestamp;
+}
+
+void getDateStringFromTimestamp(char *buffer, unsigned int timestamp)
+{
+  // get year
+}
+
 // serialHandler
 void handleSerial(char const* buffer, int len)
 {
@@ -144,6 +173,26 @@ void handleSerial(char const* buffer, int len)
    {
      generator = &generator_birthday;
      Serial1.println("Clock mode set to BIRTHDAY");
+   }
+   else if (*buffer == 'Y' && len == 11)
+                      //Y1419891762
+   {
+     buffer++;
+     config_newyear_target = getTimestampFromString(buffer, 10);
+     generator = &generator_newyear;
+     Serial1.println("Clock mode set to NEWYEAR, counting to:");
+     struct tm *tm_target = gmtime((const long int*)&config_newyear_target);
+     Serial1.print(tm_target->tm_mday, DEC);
+     Serial1.print("/");
+     Serial1.print(tm_target->tm_mon+1, DEC);
+     Serial1.print("/");
+     Serial1.print(tm_target->tm_year+1900, DEC);
+     Serial1.print(" ");
+     Serial1.print(tm_target->tm_hour, DEC);
+     Serial1.print(":");
+     Serial1.print(tm_target->tm_min, DEC);
+     Serial1.print(":");
+     Serial1.println(tm_target->tm_sec, DEC);
    }
    else if (*buffer == 't' && len == 1)
    {
@@ -165,8 +214,6 @@ void handleSerial(char const* buffer, int len)
    }
    else if(*buffer == 'T' && len == 7)
    {
-     // Simple version which handle only hours-minutes-seconds
-     // TODO: Handle timestamps
      buffer++;
      unsigned int newTime = 0;
      for(int i = 0; i < 3; i++)
@@ -177,6 +224,27 @@ void handleSerial(char const* buffer, int len)
      }
      rtc_set(newTime);
      Serial1.println("Time set");
+   }
+   else if(*buffer == 'U' && len == 11)
+   {
+     // set time with an unix timestamp
+     buffer++;
+     unsigned int newTime = getTimestampFromString(buffer, 10);
+     rtc_set(newTime);
+     Serial1.print("Time set to timestamp=");
+     Serial1.println(newTime);
+     struct tm *tm_target = gmtime((const long int*)&newTime);
+     Serial1.print(tm_target->tm_mday, DEC);
+     Serial1.print("/");
+     Serial1.print(tm_target->tm_mon+1, DEC);
+     Serial1.print("/");
+     Serial1.print(tm_target->tm_year+1900, DEC);
+     Serial1.print(" ");
+     Serial1.print(tm_target->tm_hour, DEC);
+     Serial1.print(":");
+     Serial1.print(tm_target->tm_min, DEC);
+     Serial1.print(":");
+     Serial1.println(tm_target->tm_sec, DEC);
    }
    else if(*buffer == 'D' && len == 5)
    {
@@ -194,10 +262,12 @@ void handleSerial(char const* buffer, int len)
      Serial1.println(">. Supported commands are:");
      Serial1.println("A : birthday mode");
      Serial1.println("C : clock mode");
+     Serial1.println("Yxxx : new year mode, xxx is a UNIX timestamp");
      Serial1.println("c : counter mode");
      Serial1.println("t : ask for a new transition now");
      Serial1.println("f : toggle showfps");
      Serial1.println("THHMMSS : set time, e.g. T123759");
+     Serial1.println("Txxx : set time, xxx is a UNIX timestamp");
      Serial1.println("DMMSS : countDown of MMSS, e.g. D9000 for 90 minutes");
    }
 }

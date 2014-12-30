@@ -23,6 +23,7 @@ extern frameBuffer_t frameBuffer;
 extern dotMode config_dot_mode;
 extern unsigned long config_countdown_ms;
 extern int config_want_transition_now;
+extern unsigned int config_newyear_target;
 
 #endif
 
