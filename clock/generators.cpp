@@ -95,7 +95,7 @@ void generator_clock()
   #endif
 
   /* UPDATE DOTS */
-  if (config_dot_mode == DOT_MODE_CHASE)
+  if (cfg.dot_mode == DOT_MODE_CHASE)
   {
     // yes, we could use loops below, but this way right values are computed at compile time and we're freaking fast
     if (currentTimeReal % 4 == 0)
@@ -135,7 +135,7 @@ void generator_clock()
       frameBuffer.dots[0] = (RTC_TPR < 32768/7*1);
     }
   }
-  else if (config_dot_mode == DOT_MODE_CLASSIC)
+  else if (cfg.dot_mode == DOT_MODE_CLASSIC)
   {
     frameBuffer.dots[0] = ((currentTime % 6)==0);
     frameBuffer.dots[1] = ((currentTime % 6)==1);
@@ -144,7 +144,7 @@ void generator_clock()
     frameBuffer.dots[4] = ((currentTime % 6)==4);
     frameBuffer.dots[5] = ((currentTime % 6)==5);
   }
-  else if (config_dot_mode == DOT_MODE_PROGRESSIVE)
+  else if (cfg.dot_mode == DOT_MODE_PROGRESSIVE)
   {
     frameBuffer.dots[5] = (RTC_TPR >= 32768/7*1);
     frameBuffer.dots[4] = (RTC_TPR >= 32768/7*2);
@@ -167,9 +167,9 @@ void generator_clock()
   // transition test
   static int transition_step = 0;
 
-  if (config_want_transition_now > 0)
+  if (cfg.want_transition_now > 0)
   {
-    config_want_transition_now = 0;
+    cfg.want_transition_now = 0;
     transition_step = 1;
   }
 
@@ -280,10 +280,10 @@ void generator_countdown()
   // TODO do something with the leds
   // TODO do something with the nixie dots (allow classic use of DOT_MODE_* ?)
   static unsigned long target_millis = 0; // FIXME: millis() counter reset is not taken into account
-  if (config_countdown_ms > 0)
+  if (cfg.countdown_ms > 0)
   {
-    target_millis = millis() + config_countdown_ms;
-    config_countdown_ms = 0;
+    target_millis = millis() + cfg.countdown_ms;
+    cfg.countdown_ms = 0;
   }
   signed long remaining_millis = target_millis - millis();
   if (remaining_millis >= 0)
@@ -293,7 +293,7 @@ void generator_countdown()
   else
   {
     // TODO do something fancy when the time is up, before restoring the clock
-    generator = &generator_clock;
+    cfg.generator = &generator_clock;
   }
 }
 
@@ -304,7 +304,7 @@ void generator_newyear()
 
   // config_newyear_target is target timestamp
   // getTime() is current timestamp
-  long togo_sec = config_newyear_target - getTime();
+  long togo_sec = cfg.newyear_target - getTime();
   long togo_ms  = (32768 - RTC_TPR) / (32768 / 1000);
 
   /* Turn dots OFF */
@@ -315,10 +315,10 @@ void generator_newyear()
   frameBuffer.dots[4] = 0;
   frameBuffer.dots[5] = 0;
 
-  // Slow rainbow, same color on each led
+  // Fast rainbow, same color on each led
   for(int i = 0; i < 6; i++)
   {
-    makeColor(frame/16, 100, 50, &frameBuffer.leds[3*i]);
+    makeColor(frame+32*i, 100, 50, &frameBuffer.leds[3*i]);
   }
 
   // we display different things depending on the number of
@@ -401,31 +401,103 @@ void generator_newyear()
       else if (togo_ms <= 666) { nixieOn = 1; }
       else                     { nixieOn = 0; }
     }
-    frameBuffer.digits[nixieOn+0]   =  togo_sec/100;
+    frameBuffer.digits[nixieOn+0] =  togo_sec/100;
     frameBuffer.digits[nixieOn+1] = (togo_sec%100)/10;
     frameBuffer.digits[nixieOn+2] = (togo_sec%10);
-    makeColor(0, 0, 100, &frameBuffer.leds[3*(nixieOn+0)]);
-    makeColor(0, 0, 100, &frameBuffer.leds[3*(nixieOn+1)]);
-    makeColor(0, 0, 100, &frameBuffer.leds[3*(nixieOn+2)]);
+    for (int i = 0; i < 6; i++)
+    {
+      if (i != nixieOn && i != nixieOn+1 && i != nixieOn+2)
+      {
+        makeColor(0, 0, 50, &frameBuffer.leds[3*5-3*i]);
+      }
+    }
   }
-  // E) togo_sec >= 10 => K2000 of 2 digits one way per second, such as:
+  // E) togo_sec >= 10 => 2+2+2 couples
   /*
-          99....
-          .99...
-          ..99..
-          ...99.
-          ....98
-          ...98.
-          ..98..
-          .98...
-          97....
+          999999
+          989898
+          979797
   */
   else if (togo_sec >= 10)
   {
-    // to be implemented
-    //          printf("%ld%ld%ld.%ld%ld%ld\n", togo_sec/100, (togo_sec%100)/10, togo_sec%10, togo_ms/100, (togo_ms%100)/10, togo_ms%10);
-  }
+    frameBuffer.digits[0] = togo_sec/10;
+    frameBuffer.digits[1] = togo_sec%10;
+    frameBuffer.digits[2] = togo_sec/10;
+    frameBuffer.digits[3] = togo_sec%10;
+    frameBuffer.digits[4] = togo_sec/10;
+    frameBuffer.digits[5] = togo_sec%10;
 
+    makeColor((frame+240)*2, 100, 50, &frameBuffer.leds[3*0]);
+    makeColor((frame+240)*2, 100, 50, &frameBuffer.leds[3*1]);
+
+    makeColor((frame+120)*2, 100, 50, &frameBuffer.leds[3*2]);
+    makeColor((frame+120)*2, 100, 50, &frameBuffer.leds[3*3]);
+
+    makeColor((frame+0)*2, 100, 50, &frameBuffer.leds[3*4]);
+    makeColor((frame+0)*2, 100, 50, &frameBuffer.leds[3*5]);
+  }
+  // F) last seconds !
+  else if (togo_sec > 0)
+  {
+    for (int i = 0; i < 6; i++)
+    {
+      frameBuffer.digits[i] = 0xF; // nixie off
+    }
+    int nixieLit = 6 - RTC_TPR*7/32768;
+    frameBuffer.digits[nixieLit] = togo_sec;
+    
+    // stroboscopic leds
+    for(int i = 0; i < 6; i++)
+    {
+      int col = 0;
+      if (RTC_TPR/512 % 2 == 0)
+      {
+        col = 0xFF;
+      }
+      makeColor(0, 100, col, &frameBuffer.leds[3*i]);
+    }
+  }
+  // F) last seconds !
+  else if (togo_sec >= -30)
+  {
+    int d0 = 0xF;
+    int d1 = 0xF;
+    int d2 = 0xF;
+    int d3 = 0xF;
+    int d4 = 0xF;
+    int d5 = 0xF;
+    if (RTC_TPR/2048 % 2 == 1)
+    {
+      d0 = 0xF;
+      d1 = 2;
+      d2 = 0;
+      d3 = 1;
+      d4 = 5;
+      d5 = 0xF;
+    }
+    frameBuffer.digits[0] = d0;
+    frameBuffer.digits[1] = d1;
+    frameBuffer.digits[2] = d2;
+    frameBuffer.digits[3] = d3;
+    frameBuffer.digits[4] = d4;
+    frameBuffer.digits[5] = d5;
+
+    // stroboscopic leds
+    for(int i = 0; i < 6; i++)
+    {
+      int col = 0;
+      if (RTC_TPR/1024 % 2 == 0)
+      {
+        col = 0xFF;
+      }
+      makeColor(0, 100, col, &frameBuffer.leds[3*i]);
+    }
+  }
+  // G) done.
+  else
+  {
+    cfg.generator = &generator_clock;
+  }
 }
 
 

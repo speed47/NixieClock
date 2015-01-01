@@ -1,8 +1,9 @@
+#include <time.h>
+
+#include "globals.h"
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
-#include "globals.h"
-#include <time.h>
 
 #define WANT_FADING
 
@@ -20,6 +21,10 @@ const int ledsPin = 12;
 const int tube14Pin = 15;
 const int tube25Pin = 22;
 const int tube36Pin = 23;
+
+// also declared in globals.h for use in other files
+frameBuffer_t frameBuffer;
+config_t cfg;
 
 void setup() {
   // Init BT Serial
@@ -51,23 +56,19 @@ void setup() {
   // Leds
   pinMode(ledsPin, OUTPUT);
 
-config_newyear_target = 999+8;
-                rtc_set(0);
-  
+  // Default config values
+  cfg.generator = &generator_newyear;
+  cfg.dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
+  cfg.want_transition_now = 0;
+  cfg.countdown_ms = 0;
+  cfg.newyear_target = 0;
+  cfg.show_fps = 1; // default value, can be configured via bt
+
   // Init wait (pb with ws2811)
   delay(1000);
   Serial1.println("Up\n");
 }
 
-// also declared in globals.h for use in other files
-frameBuffer_t frameBuffer;
-void (*generator)(void) = &generator_newyear;
-dotMode config_dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
-int config_want_transition_now = 0;
-unsigned long config_countdown_ms = 0;
-unsigned int config_newyear_target = 0;
-// end of globals.h
-int config_showfps = 1; // default value, can be configured via bt
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
 
@@ -79,7 +80,7 @@ void loop()
   static uint32_t nextFpsMark = 1000*1000;
   static uint16_t fps = 0;
   
-  if (config_showfps && lastEnd >= nextFpsMark)
+  if (cfg.showfps && lastEnd >= nextFpsMark)
   {
     Serial1.print(millis() / 1000, DEC);
     Serial1.print("s, fps=");
@@ -91,7 +92,7 @@ void loop()
 #endif
   
   // Generate what to display
-  generator();
+  cfg.generator();
 
   // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
   //securityNixieDot();
@@ -161,27 +162,27 @@ void handleSerial(char const* buffer, int len)
 {
    if(*buffer == 'C' && len == 1)
    {
-     generator = &generator_clock;
+     cfg.generator = &generator_clock;
      Serial1.println("Clock mode set to CLOCK");
    }
    else if(*buffer == 'c' && len == 1)
    {
-     generator = &generator_counter;
+     cfg.generator = &generator_counter;
      Serial1.println("Clock mode set to COUNTER");
    }
    else if (*buffer == 'A' && len == 1)
    {
-     generator = &generator_birthday;
+     cfg.generator = &generator_birthday;
      Serial1.println("Clock mode set to BIRTHDAY");
    }
    else if (*buffer == 'Y' && len == 11)
                       //Y1419891762
    {
      buffer++;
-     config_newyear_target = getTimestampFromString(buffer, 10);
-     generator = &generator_newyear;
+     cfg.newyear_target = getTimestampFromString(buffer, 10);
+     cfg.generator = &generator_newyear;
      Serial1.println("Clock mode set to NEWYEAR, counting to:");
-     struct tm *tm_target = gmtime((const long int*)&config_newyear_target);
+     struct tm *tm_target = gmtime((const long int*)&cfg.newyear_target);
      Serial1.print(tm_target->tm_mday, DEC);
      Serial1.print("/");
      Serial1.print(tm_target->tm_mon+1, DEC);
@@ -196,19 +197,19 @@ void handleSerial(char const* buffer, int len)
    }
    else if (*buffer == 't' && len == 1)
    {
-     config_want_transition_now = 1;
+     cfg.want_transition_now = 1;
      Serial1.println("Asked for a new transition... NOW!");
    }
    else if (*buffer == 'f' && len == 1)
    {
-     if (config_showfps)
+     if (cfg.show_fps)
      {
-       config_showfps = 0;
+       cfg.show_fps = 0;
        Serial1.println("Show FPS mode is OFF");
      }
      else
      {
-       config_showfps = 1;
+       cfg.show_fps = 1;
        Serial1.println("Show FPS mode is ON");
      }
    }
@@ -249,10 +250,10 @@ void handleSerial(char const* buffer, int len)
    else if(*buffer == 'D' && len == 5)
    {
      buffer++;
-     generator = &generator_countdown;
-     config_countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
+     cfg.generator = &generator_countdown;
+     cfg.countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
      Serial1.print("Counting down to ");
-     Serial1.println(config_countdown_ms, DEC);
+     Serial1.println(cfg.countdown_ms, DEC);
    }
    else if (len > 0)
    {
