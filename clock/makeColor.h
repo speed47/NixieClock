@@ -1,6 +1,8 @@
 #ifndef _COLOR_H_
 #define _COLOR_H_
 
+#include <stdint.h>
+
 #define LED_LIGHTNESS_DIVIDER 1 /* useful to code at night and/or on battery :) TODO: should be configurable via bt */
 
 #include "Arduino.h"
