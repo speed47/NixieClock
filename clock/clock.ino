@@ -26,114 +26,6 @@ const int tube36Pin = 23;
 frameBuffer_t frameBuffer;
 config_t cfg;
 
-void setup() {
-  // Init BT Serial
-  Serial1.begin(115200, SERIAL_8N1);
-
-  // Set PORTD as output
-  pinMode(2, OUTPUT);
-  pinMode(14, OUTPUT);
-  pinMode(7, OUTPUT);
-  pinMode(8, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(20, OUTPUT);
-  pinMode(21, OUTPUT);
-  pinMode(5, OUTPUT);
-  
-  // Dots
-  pinMode(dot1Pin, OUTPUT);
-  pinMode(dot2Pin, OUTPUT);
-  pinMode(dot3Pin, OUTPUT);
-  pinMode(dot4Pin, OUTPUT);
-  pinMode(dot5Pin, OUTPUT);
-  pinMode(dot6Pin, OUTPUT);
-  
-  // Multiplex
-  pinMode(tube14Pin, OUTPUT);
-  pinMode(tube25Pin, OUTPUT);
-  pinMode(tube36Pin, OUTPUT);
-  
-  // Leds
-  pinMode(ledsPin, OUTPUT);
-
-  // Default config values
-  cfg.generator = &generator_newyear;
-  cfg.dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
-  cfg.want_transition_now = 0;
-  cfg.countdown_ms = 0;
-  cfg.newyear_target = 0;
-  cfg.show_fps = 1; // default value, can be configured via bt
-
-  // Init wait (pb with ws2811)
-  delay(1000);
-  Serial1.println("Up\n");
-}
-
-char serialBuffer[SERIAL_BUFFER_SIZE];
-int serialBufferLen = 0;
-
-// Main loop
-void loop()
-{
-  static uint32_t lastEnd = 0;
-#ifdef FALSEEEEE
-  static uint32_t nextFpsMark = 1000*1000;
-  static uint16_t fps = 0;
-  
-  if (cfg.showfps && lastEnd >= nextFpsMark)
-  {
-    Serial1.print(millis() / 1000, DEC);
-    Serial1.print("s, fps=");
-    Serial1.println(fps, DEC);
-    nextFpsMark = lastEnd + 1000 * 1000;
-    fps = 0;
-  }
-  fps++;
-#endif
-  
-  // Generate what to display
-  cfg.generator();
-
-  // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
-  //securityNixieDot();
-
-  // Update Leds
-  updateLeds(ledsPin, frameBuffer.leds, 6);
-
-  // Update nixies dots
-  updateDots();
-  
-  // Update nixies (3 loop, 1 for each multiplex)
-  for(int i = 0; i < 3; i++)
-  {
-    // Wait until 1000µs => 7.5% blanking time, handle serial buffer during this time
-    while(micros() - lastEnd < 1000)
-    {
-      if(Serial1.available())
-      {
-        unsigned char c = Serial1.read();
-        if(c == '\r' || c == '\n')
-        {
-          serialBuffer[serialBufferLen] = '\0';
-          handleSerial(serialBuffer, serialBufferLen);
-          serialBufferLen = 0;              
-        }
-        else
-        {
-          serialBuffer[serialBufferLen] = c;
-          serialBufferLen = (serialBufferLen+1)%SERIAL_BUFFER_SIZE;
-        }
-       }
-    }
-
-    // Update nixie output multiplex i
-    updateNixie(i);
-
-    // Save current time
-    lastEnd = micros();
-  }  
-}
-
 unsigned int getTimestampFromString(char const* buffer, int len)
 {
   unsigned int timestamp = 0;
@@ -152,9 +44,58 @@ unsigned int getTimestampFromString(char const* buffer, int len)
   return timestamp;
 }
 
-void getDateStringFromTimestamp(char *buffer, unsigned int timestamp)
+
+void securityNixieDot()
 {
-  // get year
+  ; // TODO: implement me
+}
+
+// Output subs, handle dots, nixie
+void updateDots()
+{
+  digitalWriteFast(dot1Pin, frameBuffer.dots[0]);
+  digitalWriteFast(dot2Pin, frameBuffer.dots[1]);
+  digitalWriteFast(dot3Pin, frameBuffer.dots[2]);
+  digitalWriteFast(dot4Pin, frameBuffer.dots[3]);
+  digitalWriteFast(dot5Pin, frameBuffer.dots[4]);
+  digitalWriteFast(dot6Pin, frameBuffer.dots[5]);
+}
+
+void updateNixie(unsigned int frame)
+{
+  // Disable all tubes
+  digitalWriteFast(tube14Pin, 0);
+  digitalWriteFast(tube25Pin, 0);
+  digitalWriteFast(tube36Pin, 0);
+  
+  // Blanking time, waiting some time to be sure tubes are off before changing number
+  // Avoid ghosting
+  delayMicroseconds(75);
+
+  if(frame == 0)
+  {
+    // Display digit 1 & 4
+    GPIOD_PDOR = (frameBuffer.digits[2]<<4)+(frameBuffer.digits[5]);
+
+    // Enable Tube 1 & 4
+    digitalWriteFast(tube14Pin, 1);
+  }
+  else if(frame == 1)
+  {
+    // Display digit 2 & 5
+    GPIOD_PDOR = (frameBuffer.digits[1]<<4)+(frameBuffer.digits[4]);
+
+    // Enable Tube 2 & 5
+    digitalWriteFast(tube25Pin, 1);
+  }
+  else if(frame == 2)
+  {
+    // Display digit 3 & 6
+    GPIOD_PDOR = (frameBuffer.digits[0]<<4)+(frameBuffer.digits[3]);
+
+    // Enable Tube 3 & 6
+    digitalWriteFast(tube36Pin, 1);
+  }
 }
 
 // serialHandler
@@ -273,58 +214,120 @@ void handleSerial(char const* buffer, int len)
    }
 }
 
-void securityNixieDot()
-{
-  ; // TODO: implement me
-}
 
-// Output subs, handle dots, nixie
-void updateDots()
-{
-  digitalWriteFast(dot1Pin, frameBuffer.dots[0]);
-  digitalWriteFast(dot2Pin, frameBuffer.dots[1]);
-  digitalWriteFast(dot3Pin, frameBuffer.dots[2]);
-  digitalWriteFast(dot4Pin, frameBuffer.dots[3]);
-  digitalWriteFast(dot5Pin, frameBuffer.dots[4]);
-  digitalWriteFast(dot6Pin, frameBuffer.dots[5]);
-}
+void setup() {
+  // Init BT Serial
+  Serial1.begin(115200, SERIAL_8N1);
 
-void updateNixie(unsigned int frame)
-{
-  // Disable all tubes
-  digitalWriteFast(tube14Pin, 0);
-  digitalWriteFast(tube25Pin, 0);
-  digitalWriteFast(tube36Pin, 0);
+  // Set PORTD as output
+  pinMode(2, OUTPUT);
+  pinMode(14, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(20, OUTPUT);
+  pinMode(21, OUTPUT);
+  pinMode(5, OUTPUT);
   
-  // Blanking time, waiting some time to be sure tubes are off before changing number
-  // Avoid ghosting
-  delayMicroseconds(75);
+  // Dots
+  pinMode(dot1Pin, OUTPUT);
+  pinMode(dot2Pin, OUTPUT);
+  pinMode(dot3Pin, OUTPUT);
+  pinMode(dot4Pin, OUTPUT);
+  pinMode(dot5Pin, OUTPUT);
+  pinMode(dot6Pin, OUTPUT);
+  
+  // Multiplex
+  pinMode(tube14Pin, OUTPUT);
+  pinMode(tube25Pin, OUTPUT);
+  pinMode(tube36Pin, OUTPUT);
+  
+  // Leds
+  pinMode(ledsPin, OUTPUT);
 
-  if(frame == 0)
-  {
-    // Display digit 1 & 4
-    GPIOD_PDOR = (frameBuffer.digits[2]<<4)+(frameBuffer.digits[5]);
+  // Default config values
+  cfg.generator = &generator_newyear;
+  cfg.dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
+  cfg.want_transition_now = 0;
+  cfg.countdown_ms = 0;
+  cfg.newyear_target = 0;
+  cfg.show_fps = 1; // default value, can be configured via bt
 
-    // Enable Tube 1 & 4
-    digitalWriteFast(tube14Pin, 1);
-  }
-  else if(frame == 1)
-  {
-    // Display digit 2 & 5
-    GPIOD_PDOR = (frameBuffer.digits[1]<<4)+(frameBuffer.digits[4]);
-
-    // Enable Tube 2 & 5
-    digitalWriteFast(tube25Pin, 1);
-  }
-  else if(frame == 2)
-  {
-    // Display digit 3 & 6
-    GPIOD_PDOR = (frameBuffer.digits[0]<<4)+(frameBuffer.digits[3]);
-
-    // Enable Tube 3 & 6
-    digitalWriteFast(tube36Pin, 1);
-  }
+  // Init wait (pb with ws2811)
+  delay(1000);
+  Serial1.println("Up\n");
 }
+
+char serialBuffer[SERIAL_BUFFER_SIZE];
+int serialBufferLen = 0;
+
+// Main loop
+void loop()
+{
+  static uint32_t lastEnd = 0;
+#ifdef FALSEEEEE
+  static uint32_t nextFpsMark = 1000*1000;
+  static uint16_t fps = 0;
+  
+  if (cfg.showfps && lastEnd >= nextFpsMark)
+  {
+    Serial1.print(millis() / 1000, DEC);
+    Serial1.print("s, fps=");
+    Serial1.println(fps, DEC);
+    nextFpsMark = lastEnd + 1000 * 1000;
+    fps = 0;
+  }
+  fps++;
+#endif
+  
+  // Generate what to display
+  cfg.generator();
+
+  // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
+  //securityNixieDot();
+
+  // Update Leds
+  updateLeds(ledsPin, frameBuffer.leds, 6);
+
+  // Update nixies dots
+  updateDots();
+  
+  // Update nixies (3 loop, 1 for each multiplex)
+  for(int i = 0; i < 3; i++)
+  {
+    // Wait until 1000µs => 7.5% blanking time, handle serial buffer during this time
+    while(micros() - lastEnd < 1000)
+    {
+      if(Serial1.available())
+      {
+        unsigned char c = Serial1.read();
+        if(c == '\r' || c == '\n')
+        {
+          serialBuffer[serialBufferLen] = '\0';
+          handleSerial(serialBuffer, serialBufferLen);
+          serialBufferLen = 0;              
+        }
+        else
+        {
+          serialBuffer[serialBufferLen] = c;
+          serialBufferLen = (serialBufferLen+1)%SERIAL_BUFFER_SIZE;
+        }
+       }
+    }
+
+    // Update nixie output multiplex i
+    updateNixie(i);
+
+    // Save current time
+    lastEnd = micros();
+  }  
+}
+
+void getDateStringFromTimestamp(char *buffer, unsigned int timestamp)
+{
+  // get year
+}
+
 
 
 
