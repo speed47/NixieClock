@@ -52,7 +52,7 @@ COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -Isrc -I$(COREPATH)
+CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -Iclock -I$(COREPATH)
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
@@ -64,14 +64,19 @@ CFLAGS =
 ifeq ($(TEENSY), 30)
     CPPFLAGS += -D__MK20DX128__
     LDSCRIPT = $(COREPATH)/mk20dx128.ld
+    FLASHSIZE=131072
+    RAMSIZE=16384
 else
     ifeq ($(TEENSY), 31)
         CPPFLAGS += -D__MK20DX256__
         LDSCRIPT = $(COREPATH)/mk20dx256.ld
+        FLASHSIZE=262144
+        RAMSIZE=65536
     else
         $(error Invalid setting for TEENSY)
     endif
 endif
+
 
 # set arduino define if given
 ifdef ARDUINO
@@ -95,15 +100,15 @@ LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 LCPP_FILES := $(wildcard $(LIBRARYPATH)/*/*.cpp)
 TC_FILES := $(wildcard $(COREPATH)/*.c)
 TCPP_FILES := $(wildcard $(COREPATH)/*.cpp)
-C_FILES := $(wildcard src/*.c)
-CPP_FILES := $(wildcard src/*.cpp)
-INO_FILES := $(wildcard src/*.ino)
+C_FILES := $(wildcard clock/*.c)
+CPP_FILES := $(wildcard clock/*.cpp)
+INO_FILES := $(wildcard clock/*.ino)
 
 # include paths for libraries
 L_INC := $(foreach lib,$(filter %/, $(wildcard $(LIBRARYPATH)/*/)), -I$(lib))
 
 SOURCES := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TC_FILES:.c=.o) $(TCPP_FILES:.cpp=.o) $(LC_FILES:.c=.o) $(LCPP_FILES:.cpp=.o)
-OBJS := $(foreach src,$(SOURCES), $(BUILDDIR)/$(src))
+OBJS := $(foreach clock,$(SOURCES), $(BUILDDIR)/$(clock))
 
 all: hex
 
@@ -141,6 +146,7 @@ $(TARGET).elf: $(OBJS) $(LDSCRIPT)
 %.hex: %.elf
 	@echo "[HEX]\t$@"
 	@$(SIZE) "$<"
+	@$(SIZE) "$<" | tail -n1 | awk '{ FLASH=$$1+$$2; RAM=$$2+$$3 } END { print "*** Flash : "FLASH"/"$(FLASHSIZE)", RAM: "RAM"/"$(RAMSIZE); }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
 # compiler generated dependency info
