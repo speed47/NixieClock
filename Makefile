@@ -45,7 +45,8 @@ COREPATH = $(ARDUINOPATH)/hardware/teensy/cores/teensy3
 LIBRARYPATH = libraries
 
 # path location for the arm-none-eabi compiler
-COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
+#COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
+COMPILERPATH = $(TOOLSPATH)/arm/bin
 
 #************************************************************************
 # Settings below this point usually do not need to be edited
