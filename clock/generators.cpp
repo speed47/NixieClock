@@ -5,7 +5,7 @@
 // helper functions
 void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)
 {
-  if (split_mode == SPLIT_HMS)
+  if (split_mode == SPLIT_SEC_TO_HOUR_MIN_SEC)
   {
     // here, input is seconds
     // Seconds
@@ -23,7 +23,7 @@ void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)
     frameBuffer.digits[1] = hours % 10;
     frameBuffer.digits[0] = hours / 10;
   }
-  else if (split_mode == SPLIT_MSC)
+  else if (split_mode == SPLIT_MS_TO_MIN_SEC_CENTISEC)
   {
     // here, time is milliseconds
     frameBuffer.digits[5] = time % 100 / 10;
@@ -162,7 +162,7 @@ void generator_clock()
   }
 
   /* SPLIT TIME in the 6 digits */  
-  splitTimeToFramebuffer(currentTime, SPLIT_HMS);
+  splitTimeToFramebuffer(currentTime, SPLIT_SEC_TO_HOUR_MIN_SEC);
   
   // transition test
   static int transition_step = 0;
@@ -288,7 +288,7 @@ void generator_countdown()
   signed long remaining_millis = target_millis - millis();
   if (remaining_millis >= 0)
   {
-    splitTimeToFramebuffer(remaining_millis, SPLIT_MSC);
+    splitTimeToFramebuffer(remaining_millis, SPLIT_MS_TO_MIN_SEC_CENTISEC);
   }
   else
   {
