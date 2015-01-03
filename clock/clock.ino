@@ -5,6 +5,8 @@
 #include "ws2811.h"
 #include "generators.h"
 
+#include <stdint.h>
+
 #define WANT_FADING
 
 /* Configuration pins */
@@ -265,11 +267,10 @@ int serialBufferLen = 0;
 void loop()
 {
   static uint32_t lastEnd = 0;
-#ifdef FALSEEEEE
   static uint32_t nextFpsMark = 1000*1000;
   static uint16_t fps = 0;
   
-  if (cfg.showfps && lastEnd >= nextFpsMark)
+  if (cfg.show_fps && lastEnd >= nextFpsMark)
   {
     Serial1.print(millis() / 1000, DEC);
     Serial1.print("s, fps=");
@@ -278,7 +279,6 @@ void loop()
     fps = 0;
   }
   fps++;
-#endif
   
   // Generate what to display
   cfg.generator();
