@@ -61,18 +61,22 @@ CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 # compiler options for C only
 CFLAGS =
 
+FLASHSIZE30=131072
+RAMSIZE30=16384
+FLASHSIZE31=262144
+RAMSIZE31=65536
 # compiler options specific to teensy version
 ifeq ($(TEENSY), 30)
     CPPFLAGS += -D__MK20DX128__
     LDSCRIPT = $(COREPATH)/mk20dx128.ld
-    FLASHSIZE=131072
-    RAMSIZE=16384
+    FLASHSIZE=$(FLASHSIZE30)
+    RAMSIZE=$(RAMSIZE30)
 else
     ifeq ($(TEENSY), 31)
         CPPFLAGS += -D__MK20DX256__
         LDSCRIPT = $(COREPATH)/mk20dx256.ld
-        FLASHSIZE=262144
-        RAMSIZE=65536
+        FLASHSIZE=$(FLASHSIZE31)
+        RAMSIZE=$(RAMSIZE31)
     else
         $(error Invalid setting for TEENSY)
     endif
@@ -146,8 +150,7 @@ $(TARGET).elf: $(OBJS) $(LDSCRIPT)
 
 %.hex: %.elf
 	@echo "[HEX]\t$@"
-	@$(SIZE) "$<"
-	@$(SIZE) "$<" | tail -n1 | awk '{ FLASH=$$1+$$2; RAM=$$2+$$3 } END { print "*** Flash : "FLASH"/"$(FLASHSIZE)", RAM: "RAM"/"$(RAMSIZE); }'
+	@$(SIZE) "$<" | awk '{ print; if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
 # compiler generated dependency info
@@ -157,3 +160,4 @@ clean:
 	@echo Cleaning...
 	@rm -rf "$(BUILDDIR)"
 	@rm -f "$(TARGET).elf" "$(TARGET).hex"
+
