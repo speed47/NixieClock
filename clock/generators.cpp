@@ -457,30 +457,20 @@ void generator_newyear()
       makeColor(0, 100, col, &frameBuffer.leds[3*i]);
     }
   }
-  // F) last seconds !
+  // G) here we are
   else if (togo_sec >= -30)
   {
-    int d0 = 0xF;
-    int d1 = 0xF;
-    int d2 = 0xF;
-    int d3 = 0xF;
-    int d4 = 0xF;
-    int d5 = 0xF;
+    for (int i = 0; i < 6; i++)
+    {
+      frameBuffer.digits[i] = 0xF;
+    }
     if (RTC_TPR/2048 % 2 == 1)
     {
-      d0 = 0xF;
-      d1 = 2;
-      d2 = 0;
-      d3 = 1;
-      d4 = 5;
-      d5 = 0xF;
+      frameBuffer.digits[1] = 2;
+      frameBuffer.digits[2] = 0;
+      frameBuffer.digits[3] = 1;
+      frameBuffer.digits[4] = 5;
     }
-    frameBuffer.digits[0] = d0;
-    frameBuffer.digits[1] = d1;
-    frameBuffer.digits[2] = d2;
-    frameBuffer.digits[3] = d3;
-    frameBuffer.digits[4] = d4;
-    frameBuffer.digits[5] = d5;
 
     // stroboscopic leds
     for(int i = 0; i < 6; i++)
@@ -493,7 +483,7 @@ void generator_newyear()
       makeColor(0, 100, col, &frameBuffer.leds[3*i]);
     }
   }
-  // G) done.
+  // H) done.
   else
   {
     cfg.generator = &generator_clock;
