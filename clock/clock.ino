@@ -150,16 +150,9 @@ void handleSerial(char const* buffer, int len)
   }
   else if (*buffer == 'f' && len == 1)
   {
-    if (cfg.show_fps)
-    {
-      cfg.show_fps = 0;
-      Serial1.println("Show FPS mode is OFF");
-    }
-    else
-    {
-      cfg.show_fps = 1;
-      Serial1.println("Show FPS mode is ON");
-    }
+    cfg.show_fps = !cfg.show_fps;
+    Serial1.print("Show FPS mode is ");
+    Serial1.println(cfg.show_fps ? "ON" : "OFF");
   }
   else if(*buffer == 'T' && len == 7)
   {
