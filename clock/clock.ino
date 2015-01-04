@@ -34,13 +34,9 @@ uint32_t getTimestampFromString(char const* buffer, int len)
   uint32_t timestamp = 0;
   for (int i = 0; i < len; i++)
   {
-    uint32_t digit = buffer[i] - '0';
-    for (int j = i+1; j < len; j++)
-    {
-      // missing check for uint overflow... but it's ok for good old unix timestamps
-      digit *= 10;
-    }
-    timestamp += digit;
+    // missing check for uint overflow... but it's ok for good old unix timestamps
+    timestamp *= 10;
+    timestamp += buffer[i] - '0';
   }
   return timestamp;
 }
