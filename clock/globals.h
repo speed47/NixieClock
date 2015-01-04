@@ -50,9 +50,9 @@ typedef struct
   // pointer to the generator function that will be used
   void (*generator)(void);
   // config for generator_countdown:
-  unsigned long countdown_ms;
+  uint32_t countdown_ms;
   // config for generator_newyear:
-  unsigned int newyear_target;
+  uint32_t newyear_target;
   // config for generator_clock:
   dotMode dot_mode;
   int want_transition_now;

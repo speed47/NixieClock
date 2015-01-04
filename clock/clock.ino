@@ -29,28 +29,33 @@ const int tube36Pin = 23;
 frameBuffer_t frameBuffer;
 config_t cfg;
 
-unsigned int getTimestampFromString(char const* buffer, int len)
+uint32_t getTimestampFromString(char const* buffer, int len)
 {
-  unsigned int timestamp = 0;
+  uint32_t timestamp = 0;
   for (int i = 0; i < len; i++)
   {
-    unsigned int digit = buffer[i] - '0';
-    //printf("for i=%d, just read %d\n", i, digit);
+    uint32_t digit = buffer[i] - '0';
     for (int j = i+1; j < len; j++)
     {
-      //FIXME missing check for uint overflow... but it's ok for good old unix timestamps
+      // missing check for uint overflow... but it's ok for good old unix timestamps
       digit *= 10;
-      //printf("... j=%d, digit=%u\n", j, digit);
     }
     timestamp += digit;
   }
   return timestamp;
 }
 
-
+inline
 void securityNixieDot()
 {
-  ; // TODO: implement me
+  for (int i = 0; i < 6; i++)
+  {
+    if (frameBuffer.dots[i] != 0 && frameBuffer.digits[i] > 9)
+    {
+      dbg1("securityNixieDot: shutting down dot ");//, i, DEC);
+      frameBuffer.dots[i] = 0;
+    }
+  }
 }
 
 // Output subs, handle dots, nixie
@@ -157,7 +162,7 @@ void handleSerial(char const* buffer, int len)
   else if(*buffer == 'T' && len == 7)
   {
     buffer++;
-    unsigned int newTime = 0;
+    uint32_t newTime = 0;
     for(int i = 0; i < 3; i++)
     {
       newTime *= 60;
@@ -171,7 +176,7 @@ void handleSerial(char const* buffer, int len)
   {
     // set time with an unix timestamp
     buffer++;
-    unsigned int newTime = getTimestampFromString(buffer, 10);
+    uint32_t newTime = getTimestampFromString(buffer, 10);
     rtc_set(newTime);
     Serial1.print("Time set to timestamp=");
     Serial1.println(newTime);
@@ -287,7 +292,7 @@ void loop()
   cfg.generator();
 
   // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
-  //securityNixieDot();
+  securityNixieDot();
 
   // Update Leds
   updateLeds(ledsPin, frameBuffer.leds, 6);

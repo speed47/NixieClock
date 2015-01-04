@@ -279,13 +279,13 @@ void generator_countdown()
 {
   // TODO do something with the leds
   // TODO do something with the nixie dots (allow classic use of DOT_MODE_* ?)
-  static unsigned long target_millis = 0; // FIXME: millis() counter reset is not taken into account
+  static uint32_t target_millis = 0; // FIXME: millis() counter reset is not taken into account
   if (cfg.countdown_ms > 0)
   {
     target_millis = millis() + cfg.countdown_ms;
     cfg.countdown_ms = 0;
   }
-  signed long remaining_millis = target_millis - millis();
+  int32_t remaining_millis = target_millis - millis();
   if (remaining_millis >= 0)
   {
     splitTimeToFramebuffer(remaining_millis, SPLIT_MS_TO_MIN_SEC_CENTISEC);
@@ -304,8 +304,8 @@ void generator_newyear()
 
   // config_newyear_target is target timestamp
   // getTime() is current timestamp
-  long togo_sec = cfg.newyear_target - getTime();
-  long togo_ms  = (32768 - RTC_TPR) / (32768 / 1000);
+  int32_t togo_sec = cfg.newyear_target - getTime();
+  unsigned int togo_ms = (32768 - RTC_TPR) / (32768 / 1000);
 
   /* Turn dots OFF */
   frameBuffer.dots[0] = 0;
