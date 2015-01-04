@@ -59,6 +59,7 @@ void securityNixieDot()
 }
 
 // Output subs, handle dots, nixie
+inline
 void updateDots()
 {
   digitalWriteFast(dot1Pin, frameBuffer.dots[0]);
@@ -69,6 +70,7 @@ void updateDots()
   digitalWriteFast(dot6Pin, frameBuffer.dots[5]);
 }
 
+inline
 void updateNixie(unsigned int frame)
 {
   // Disable all tubes
@@ -107,6 +109,7 @@ void updateNixie(unsigned int frame)
 }
 
 // serialHandler
+inline
 void handleSerial(char const* buffer, int len)
 {
   if(strncmp(buffer, "ERROR", 5) == 0)
@@ -220,7 +223,8 @@ void handleSerial(char const* buffer, int len)
 }
 
 
-void setup() {
+void setup()
+{
 #ifdef RTC_COMPENSATE
   // compensate RTC
   rtc_compensate(RTC_COMPENSATE);
@@ -264,8 +268,9 @@ void setup() {
   cfg.show_fps = 1; // default value, can be configured via bt
 
   // Init wait (pb with ws2811)
+  dbg1("sleeping for ws2811 init");
   delay(1000);
-  //Serial1.println("Up\n");
+  dbg1("up, entering main loop");
 }
 
 char serialBuffer[SERIAL_BUFFER_SIZE];
@@ -277,19 +282,26 @@ void loop()
   static uint32_t lastEnd = 0;
   static uint32_t nextFpsMark = 1000*1000;
   static uint16_t fps = 0;
+  static uint32_t computation_time = 0;
 
   if (cfg.show_fps && lastEnd >= nextFpsMark)
   {
-    Serial.print(millis() / 1000, DEC);
-    Serial.print("s, fps=");
-    Serial.println(fps, DEC);
+    Serial1.print(millis() / 1000, DEC);
+    Serial1.print("s, fps=");
+    Serial1.print(fps, DEC);
+    Serial1.print(", ");
+    Serial1.print(computation_time / fps, DEC);
+    Serial1.print("us calc/frame");
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
+    computation_time = 0;
   }
   fps++;
 
   // Generate what to display
+  uint32_t compute_begin = micros();
   cfg.generator();
+  computation_time = micros() - compute_begin;
 
   // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
   securityNixieDot();
@@ -331,13 +343,4 @@ void loop()
     lastEnd = micros();
   }  
 }
-
-void getDateStringFromTimestamp(char *buffer, unsigned int timestamp)
-{
-  // get year
-}
-
-
-
-
 
