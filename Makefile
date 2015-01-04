@@ -1,6 +1,12 @@
 # The name of your project (used to name the compiled .hex file)
 TARGET = NixieClock
 
+# Folder where the .ino and .c/.cpp/.h files are located
+SKETCHSRC = clock
+
+# Path were the arduino install is located
+ARDUINOPATH = $(HOME)/arduino
+
 # The teensy version to use, 30 or 31
 TEENSY = 31
 
@@ -8,22 +14,28 @@ TEENSY = 31
 TEENSY_CORE_SPEED = 96000000
 
 # Some libraries will require this to be defined
-# If you define this, you will break the default main.cpp
 ARDUINO = 106
+TEENSYDUINO = 121
 
 # configurable options
 OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
-# directory to build in
-BUILDDIR = $(abspath $(CURDIR)/build)
+# more speed at the cost of size
+OPTIONS += -O2
 
-ARDUINOPATH = $(HOME)/arduino
+# less size at the cost of speed
+#OPTIONS += -Os
+
+# ------- stuff below shouldn't need to be modified -----------
 
 #************************************************************************
 # Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
 # To use this makefile without Arduino, copy the resources from these
 # locations and edit the pathnames.  The rest of Arduino is not needed.
 #************************************************************************
+
+# directory to build in
+BUILDDIR = $(abspath $(CURDIR)/build)
 
 # path location for Teensy Loader, teensy_post_compile and teensy_reboot
 #TOOLSPATH = $(CURDIR)/tools
@@ -53,7 +65,7 @@ COMPILERPATH = $(TOOLSPATH)/arm/bin
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -Iclock -I$(COREPATH)
+CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -DTIME_T=$(shell date +%s) -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(SKETCHSRC) -I$(COREPATH)
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
@@ -87,6 +99,9 @@ endif
 ifdef ARDUINO
 	CPPFLAGS += -DARDUINO=$(ARDUINO)
 endif
+ifdef TEENSYDUINO
+	CPPFLAGS += -DTEENSYDUINO=$(TEENSYDUINO)
+endif
 
 # linker options
 LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(LDSCRIPT)
@@ -105,15 +120,15 @@ LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 LCPP_FILES := $(wildcard $(LIBRARYPATH)/*/*.cpp)
 TC_FILES := $(wildcard $(COREPATH)/*.c)
 TCPP_FILES := $(wildcard $(COREPATH)/*.cpp)
-C_FILES := $(wildcard clock/*.c)
-CPP_FILES := $(wildcard clock/*.cpp)
-INO_FILES := $(wildcard clock/*.ino)
+C_FILES := $(wildcard $(SKETCHSRC)/*.c)
+CPP_FILES := $(wildcard $(SKETCHSRC)/*.cpp)
+INO_FILES := $(wildcard $(SKETCHSRC)/*.ino)
 
 # include paths for libraries
 L_INC := $(foreach lib,$(filter %/, $(wildcard $(LIBRARYPATH)/*/)), -I$(lib))
 
 SOURCES := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TC_FILES:.c=.o) $(TCPP_FILES:.cpp=.o) $(LC_FILES:.c=.o) $(LCPP_FILES:.cpp=.o)
-OBJS := $(foreach clock,$(SOURCES), $(BUILDDIR)/$(clock))
+OBJS := $(foreach $(SKETCHSRC),$(SOURCES), $(BUILDDIR)/$($(SKETCHSRC)))
 
 all: hex
 
