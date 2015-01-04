@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #define WANT_FADING
+#define RTC_COMPENSATE 0
 
 /* Configuration pins */
 
@@ -103,7 +104,11 @@ void updateNixie(unsigned int frame)
 // serialHandler
 void handleSerial(char const* buffer, int len)
 {
-   if(*buffer == 'C' && len == 1)
+   if(strncmp(buffer, "ERROR", 5) == 0)
+   {
+     ;//dbg1()Serial.println("FLUSHED SERIAL1");
+   }
+   else if(*buffer == 'C' && len == 1)
    {
      cfg.generator = &generator_clock;
      Serial1.println("Clock mode set to CLOCK");
@@ -218,6 +223,11 @@ void handleSerial(char const* buffer, int len)
 
 
 void setup() {
+#ifdef RTC_COMPENSATE
+  // compensate RTC
+  rtc_compensate(RTC_COMPENSATE);
+#endif
+  
   // Init BT Serial
   Serial1.begin(115200, SERIAL_8N1);
 
@@ -257,7 +267,7 @@ void setup() {
 
   // Init wait (pb with ws2811)
   delay(1000);
-  Serial1.println("Up\n");
+  //Serial1.println("Up\n");
 }
 
 char serialBuffer[SERIAL_BUFFER_SIZE];
@@ -272,9 +282,9 @@ void loop()
   
   if (cfg.show_fps && lastEnd >= nextFpsMark)
   {
-    Serial1.print(millis() / 1000, DEC);
-    Serial1.print("s, fps=");
-    Serial1.println(fps, DEC);
+    Serial.print(millis() / 1000, DEC);
+    Serial.print("s, fps=");
+    Serial.println(fps, DEC);
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
   }
@@ -301,6 +311,7 @@ void loop()
       if(Serial1.available())
       {
         unsigned char c = Serial1.read();
+        Serial.print(c);
         if(c == '\r' || c == '\n')
         {
           serialBuffer[serialBufferLen] = '\0';
@@ -327,6 +338,7 @@ void getDateStringFromTimestamp(char *buffer, unsigned int timestamp)
 {
   // get year
 }
+
 
 
 
