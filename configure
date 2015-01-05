@@ -13,10 +13,11 @@ Required arguments:
 --arduino-path|-p <path> : path where your Arduino+Teensyduino install is located
 
 Optional arguments:
---frequency|-f <2|4|8|16|24|48|72|96|120|144|168> : specify Teensy core frequency, 48 is the default
---rtc-compensate|-r <number> : specify RTC adjustment for your crystal
+--frequency|-f <2|4|8|16|24|48|72|96|120|144|168> : specify Teensy core frequency (default=48)
+--rtc-compensate|-r <number> : specify RTC adjustment for your crystal (default=0)
+--debug|-d <0-3> : specify debug level (default=1)
 
-Example: ./configure -t 31 -f 96 -p ~/arduino-1.0.6
+Example: ./configure -t 31 -f 96 -p ~/arduino-1.0.6 -d 0
 
 EOF
 }
@@ -30,9 +31,10 @@ FREQUENCY=48
 TEENSY_VERSION=required
 ARDUINO_PATH=required
 RTC_COMPENSATE=0
+NIXIE_DEBUG=1
 
 if [ -n "$1" ] ; then
-	TEMP=`getopt -o f:t:p:r: -l frequency:,teensy-version:,arduino-path:rtc-compensate: -n configure -- "$@"`
+	TEMP=`getopt -o f:t:p:r:d: -l frequency:,teensy-version:,arduino-path:,rtc-compensate:,debug: -n configure -- "$@"`
 	if [ $? != 0 ] ; then echo "configure: aborting..." >&2 ; exit 1 ; fi
 	# Note the quotes around `$TEMP': they are essential!
 	eval set -- "$TEMP"
@@ -72,6 +74,14 @@ if [ -n "$1" ] ; then
 					exit 1;
 				else
 					RTC_COMPENSATE=$2
+				fi
+				shift 2 ;;
+			-d|--debug)
+				if [ "$2" != 0 ] && [ "$2" != 1 ] && [ "$2" != 2 ] && [ "$2" != 3 ] ; then
+					echo "configure: expected a number in the range 0-3 instead of '$2'"
+					exit 1;
+				else
+					NIXIE_DEBUG=$2
 				fi
 				shift 2 ;;
 			--) shift ; break ;;
@@ -116,3 +126,4 @@ sed -i -re "s%#ARDUINO_PATH#%$ARDUINO_PATH%g" $TARGET
 sed -i -re "s%#COMPIL_SUB_PATH#%$COMPIL_SUB_PATH%g" $TARGET
 sed -i -re "s%#COMPIL_PREFIX#%$COMPIL_PREFIX%g" $TARGET
 sed -i -re "s%#RTC_COMPENSATE#%$RTC_COMPENSATE%g" $TARGET
+sed -i -re "s%#NIXIE_DEBUG#%$NIXIE_DEBUG%g" $TARGET

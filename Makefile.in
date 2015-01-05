@@ -81,6 +81,7 @@ CPPFLAGS += -DGIT_REVISION="$(GITREVISION)"
 CPPFLAGS += -DGIT_DIRTY="$(GITDIRTY)"
 CPPFLAGS += -DBUILD_TIME="$(BUILDTIME)"
 CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
+CPPFLAGS += -DNIXIE_DEBUG=#NIXIE_DEBUG#
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
@@ -180,8 +181,8 @@ $(TARGET).elf: $(OBJS) $(LDSCRIPT)
 	@$(CC) $(LDFLAGS) -o "$@" $(OBJS) $(LIBS)
 
 %.hex: %.elf
-	@echo -e "[HEX]\t$@"
-	@echo -e "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
+	@/bin/echo -e "[HEX]\t$@"
+	@/bin/echo -e "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
 	@$(SIZE) "$<" | awk '{ if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 

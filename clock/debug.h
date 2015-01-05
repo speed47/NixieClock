@@ -10,8 +10,8 @@
 #define DEBUG_LEVEL_3 3
 
 // should be defined via ./configure, but if not, here is a default
-#ifndef DEBUG
-# define DEBUG DEBUG_LEVEL_1
+#ifndef NIXIE_DEBUG
+# define NIXIE_DEBUG DEBUG_LEVEL_1
 #endif
 
 #define DEBUG_OUTPUT_BT Serial1
@@ -23,7 +23,7 @@
 
 extern char printbuf[DEBUG_BUFFER_SIZE];
 
-#if DEBUG >= DEBUG_LEVEL_1
+#if NIXIE_DEBUG >= DEBUG_LEVEL_1
 # define dbg1(...) { \
   sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg1: "); \
@@ -33,7 +33,7 @@ extern char printbuf[DEBUG_BUFFER_SIZE];
 # define dbg1(...) ;
 #endif
 
-#if DEBUG >= DEBUG_LEVEL_2
+#if NIXIE_DEBUG >= DEBUG_LEVEL_2
 # define dbg2(...) { \
   sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg2: "); \
@@ -43,7 +43,7 @@ extern char printbuf[DEBUG_BUFFER_SIZE];
 # define dbg2(...) ;
 #endif
 
-#if DEBUG >= DEBUG_LEVEL_3
+#if NIXIE_DEBUG >= DEBUG_LEVEL_3
 # define dbg3(...) { \
   sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg3: "); \
