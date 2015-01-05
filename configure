@@ -1,0 +1,106 @@
+#! /bin/sh
+TEMPLATE=Makefile.in
+TARGET=Makefile
+
+helpmsg()
+{
+	cat <<EOF
+
+Usage: ./configure <required arguments> [optional arguments]
+
+Required arguments:
+--teensy-version|-t <30|31> : specify Teensy version used, either 3.0 or 3.1
+--arduino-path|-p <path> : path where your Arduino+Teensyduino install is located
+
+Optional arguments:
+--frequency|-f <2|4|8|16|24|48|72|96|120|144|168> : specify Teensy core frequency, 48 is the default
+
+Example: ./configure -t 31 -f 96 -p ~/arduino-1.0.6
+
+EOF
+}
+
+if ! test -e $TEMPLATE ; then
+	echo "[ERROR] Missing required file $TEMPLATE"
+	exit 1
+fi
+
+FREQUENCY=48
+TEENSY_VERSION=required
+ARDUINO_PATH=required
+
+if [ -n "$1" ] ; then
+	TEMP=`getopt -o f:t:p: -l frequency:,teensy-version:,arduino-path: -n configure -- "$@"`
+	if [ $? != 0 ] ; then echo "configure: aborting..." >&2 ; exit 1 ; fi
+	# Note the quotes around `$TEMP': they are essential!
+	eval set -- "$TEMP"
+
+	while true ; do
+		case "$1" in
+			-f|--frequency)
+				if [ "$2" != 168 ] && [ "$2" != 144 ] && [ "$2" != 120 ] && [ "$2" != 96 ] && [ "$2" != 72 ] && [ "$2" != 48 ] && [ "$2" != 24 ] && [ "$2" != 16 ] && [ "$2" != 8 ] && [ "$2" != 4 ] && [ "$2" != 2 ] ; then
+					echo "configure: frequency out of bounds ($2), expected one of: 2, 4, 8, 16, 24, 48 (default), 72, 96, 120, 144, 168."
+					exit 1
+				else
+					FREQUENCY=$2
+				fi
+				shift 2 ;;
+			-t|--teensy-version)
+				if [ "$2" != 30 ] && [ "$2" != 31 ]; then
+					echo "configure: teensy version unknown, expected one of: 30 (Teensy 3.0) or 31 (Teensy 3.1)."
+					exit 1;
+				else
+					TEENSY_VERSION=$2
+				fi
+				shift 2 ;;
+			-p|--arduino-path)
+				if [ ! -r "$2" ] || [ ! -d "$2" ]; then
+					echo "configure: specified Arduino path ($2) is either not a directory or not readable."
+					exit 1;
+				elif [ ! -d "$2/hardware/teensy" ] ; then
+					echo "configure: specified Arduino path ($2) doesn't seem correct or doesn't have Teensyduino installed."
+					exit 1;
+				else
+					ARDUINO_PATH="$2"
+				fi
+				shift 2 ;;
+			--) shift ; break ;;
+			*) echo "configure: options parsing internal error! ($1)"; exit 1 ;;
+		esac
+	done
+
+	if [ -n "$1" ] ; then
+		echo "configure: sparse arguments found: $@"
+		helpmsg
+		exit 1
+	fi
+	#for arg do echo '--> '"\`$arg'" ; done
+fi
+
+# check for required arguments
+if [ "$TEENSY_VERSION" = "required" ] ; then
+	echo "configure: missing required option --teensy-version"
+	helpmsg
+	exit 1
+elsif [ "$ARDUINO_PATH" = "required" ] ;
+	echo "configure: missing required option --arduino-path"
+	helpmsg
+	exit 1
+fi
+
+if [ -x "$ARDUINO_PATH/hardware/tools/arm/bin/arm-none-eabi-gcc" ] ; then
+	COMPIL_SUB_PATH="arm/bin"
+	COMPIL_PREFIX="arm-none-eabi-"
+elif [ -x "$ARDUINO_PATH/hardware/tools/arm-none-eabi/bin/arm-none-eabi-gcc" ] ; then
+	COMPIL_SUB_PATH="arm-none-eabi/bin"
+	COMPIL_PREFIX="arm-none-eabi-"
+else
+	echo "configure: coudln't find a valid ARM compiler under $ARDUINO_PATH/hardware/tools"
+	exit 1
+fi
+
+cat $TEMPLATE | sed -re "s%#TEENSY_VERSION#%$TEENSY_VERSION%g;s%#FREQUENCY#%$FREQUENCY%g;s%#ARDUINO_PATH#%$ARDUINO_PATH%g;s%#COMPIL_SUB_PATH#%$COMPIL_SUB_PATH%g;s%#COMPIL_PREFIX#%$COMPIL_PREFIX%g" > $TARGET
+
+#cp $TEMPLATE $TARGET
+
+
