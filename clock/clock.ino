@@ -364,11 +364,14 @@ void handleSerial(char const* buffer, int len)
   {
     Serial1.println();
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
+    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
+    Serial1.println("Compiler version " __VERSION__ );
     Serial1.print("Uptime is ");
     Serial1.print(uptime, DEC);
     Serial1.println(" seconds");
-    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
-    Serial1.println("Compiler version " __VERSION__ );
+    Serial1.print("Teensy core is running at ");
+    Serial1.print(F_CPU / 1000000, DEC);
+    Serial1.println(" MHz");
   }
   else if (len > 0)
   {
