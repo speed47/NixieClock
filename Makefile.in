@@ -5,13 +5,13 @@ TARGET = NixieClock
 SKETCHSRC = clock
 
 # Path were the arduino install is located
-ARDUINOPATH = $(HOME)/arduino
+ARDUINOPATH = #ARDUINO_PATH#
 
 # The teensy version to use, 30 or 31
-TEENSY = 31
+TEENSY = #TEENSY_VERSION#
 
 # Set to 24000000, 48000000, or 96000000 to set CPU core speed
-TEENSY_CORE_SPEED = 96000000
+TEENSY_CORE_SPEED = #FREQUENCY#000000
 
 # Some libraries will require this to be defined
 ARDUINO = 106
@@ -21,10 +21,10 @@ TEENSYDUINO = 121
 OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
 # more speed at the cost of size
-OPTIONS += -O2
+#OPTIONS += -O2
 
 # less size at the cost of speed
-#OPTIONS += -Os
+OPTIONS += -Os
 
 # ------- stuff below shouldn't need to be modified -----------
 
@@ -58,7 +58,8 @@ LIBRARYPATH = libraries
 
 # path location for the arm-none-eabi compiler
 #COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
-COMPILERPATH = $(TOOLSPATH)/arm/bin
+COMPILERPATH = $(TOOLSPATH)/#COMPIL_SUB_PATH#
+#arm/bin
 
 #************************************************************************
 # Settings below this point usually do not need to be edited
@@ -124,10 +125,10 @@ LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(LDSCRIPT)
 LIBS = -lm
 
 # names for the compiler programs
-CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
-CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
-OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
-SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+CC = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#gcc
+CXX = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#g++
+OBJCOPY = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#objcopy
+SIZE = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#size
 
 # automatically create lists of the sources and objects
 LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
@@ -159,27 +160,27 @@ reboot:
 upload: post_compile reboot
 
 $(BUILDDIR)/%.o: %.c
-	@echo "[CC]\t$<"
+	@echo -e "[CC]\t$<"
 	@mkdir -p "$(dir $@)"
 	@$(CC) $(CPPFLAGS) $(CFLAGS) $(L_INC) -o "$@" -c "$<"
 
 $(BUILDDIR)/%.o: %.cpp
-	@echo "[CXX]\t$<"
+	@echo -e "[CXX]\t$<"
 	@mkdir -p "$(dir $@)"
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(L_INC) -o "$@" -c "$<"
 
 $(BUILDDIR)/%.o: %.ino
-	@echo "[CXX]\t$<"
+	@echo -e "[CXX]\t$<"
 	@mkdir -p "$(dir $@)"
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(L_INC) -o "$@" -x c++ -include Arduino.h -c "$<"
 
 $(TARGET).elf: $(OBJS) $(LDSCRIPT)
-	@echo "[LD]\t$@"
+	@echo -e "[LD]\t$@"
 	@$(CC) $(LDFLAGS) -o "$@" $(OBJS) $(LIBS)
 
 %.hex: %.elf
-	@echo "[HEX]\t$@"
-	@echo "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
+	@echo -e "[HEX]\t$@"
+	@echo -e "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
 	@$(SIZE) "$<" | awk '{ if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
