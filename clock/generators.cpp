@@ -279,13 +279,8 @@ void generator_countdown()
 {
   // TODO do something with the leds
   // TODO do something with the nixie dots (allow classic use of DOT_MODE_* ?)
-  static uint32_t target_millis = 0; // FIXME: millis() counter reset is not taken into account
-  if (cfg.countdown_ms > 0)
-  {
-    target_millis = millis() + cfg.countdown_ms;
-    cfg.countdown_ms = 0;
-  }
-  int32_t remaining_millis = target_millis - millis();
+  // FIXME: millis() counter reset is not taken into account
+  int32_t remaining_millis = cfg.countdown_target_millis - millis();
   if (remaining_millis >= 0)
   {
     splitTimeToFramebuffer(remaining_millis, SPLIT_MS_TO_MIN_SEC_CENTISEC);
@@ -293,6 +288,7 @@ void generator_countdown()
   else
   {
     // TODO do something fancy when the time is up, before restoring the clock
+    cfg.countdown_target_millis = 0;
     cfg.generator = &generator_clock;
   }
 }

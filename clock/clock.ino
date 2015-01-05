@@ -24,8 +24,16 @@ const int tube25Pin = 22;
 const int tube36Pin = 23;
 
 // also declared in globals.h for use in other files
+uint32_t uptime = 0;
 frameBuffer_t frameBuffer;
-config_t cfg;
+config_t cfg = {
+  .generator = &generator_clock,
+  .countdown_target_millis = 0,
+  .newyear_target = 0,
+  .dot_mode = DOT_MODE_CHASE,
+  .want_transition_now = 0,
+  .show_fps = 0,
+};
 
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
@@ -66,14 +74,6 @@ void setup()
   // Leds
   pinMode(ledsPin, OUTPUT);
 
-  // Default config values
-  cfg.generator = &generator_newyear;
-  cfg.dot_mode = DOT_MODE_CHASE; // TODO: should be configurable via bt
-  cfg.want_transition_now = 0;
-  cfg.countdown_ms = 0;
-  cfg.newyear_target = 0;
-  cfg.show_fps = 0; // default value, can be configured via bt
-
   // Init wait (pb with ws2811)
   dbg1("sleeping for ws2811 init");
   delay(1000);
@@ -86,7 +86,6 @@ void loop()
   static uint32_t lastEnd = micros();
   static uint32_t nextFpsMark = lastEnd + 1000*1000;
   static uint16_t fps = 0;
-  static uint32_t uptime = 0;
   
   if (lastEnd >= nextFpsMark)
   {
@@ -351,15 +350,21 @@ void handleSerial(char const* buffer, int len)
   else if(*buffer == 'W' && len == 5)
   {
     buffer++;
+    uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
+    Serial1.print("Countdown for ");
+    Serial1.print(countdown_seconds, DEC);
+    Serial1.println(" seconds");
+    // FIXME: millis() reset not taken into account. tocheck also : uint32 overflow
+    cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
-    cfg.countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
-    Serial1.print("Counting down to ");
-    Serial1.println(cfg.countdown_ms, DEC);
   }
   else if (*buffer == 'i' && len == 1)
   {
     Serial1.println();
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
+    Serial1.print("Uptime is ");
+    Serial1.print(uptime, DEC);
+    Serial1.println(" seconds");
     Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
     Serial1.println("Compiler version " __VERSION__ );
   }

@@ -63,7 +63,7 @@ typedef struct
   // pointer to the generator function that will be used
   void (*generator)(void);
   // config for generator_countdown:
-  uint32_t countdown_ms;
+  uint32_t countdown_target_millis;
   // config for generator_newyear:
   uint32_t newyear_target;
   // config for generator_clock:
@@ -74,6 +74,7 @@ typedef struct
 } config_t;
 
 extern config_t cfg;
+extern uint32_t uptime;
 
 #endif
 
