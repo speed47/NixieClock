@@ -64,14 +64,28 @@ COMPILERPATH = $(TOOLSPATH)/arm/bin
 # Settings below this point usually do not need to be edited
 #************************************************************************
 
+GITREVISION = $(shell git log -n 1 --pretty=format:%h)
+GITDIRTYTMP = $(shell git diff | md5sum | cut -c1-8)
+BUILDTIME = $(shell date)
+ifeq ($(GITDIRTYTMP), d41d8cd9)
+    GITDIRTY = clean
+else
+    GITDIRTY = dirty-$(GITDIRTYTMP)
+endif
+
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -DTIME_T=$(shell date +%s) -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(SKETCHSRC) -I$(COREPATH)
+CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(SKETCHSRC) -I$(COREPATH)
+CPPFLAGS += -DTIME_T=$(shell date +%s)
+CPPFLAGS += -DGIT_REVISION="$(GITREVISION)"
+CPPFLAGS += -DGIT_DIRTY="$(GITDIRTY)"
+CPPFLAGS += -DBUILD_TIME="$(BUILDTIME)"
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 
 # compiler options for C only
 CFLAGS =
+
 
 FLASHSIZE30=131072
 RAMSIZE30=16384
@@ -165,7 +179,8 @@ $(TARGET).elf: $(OBJS) $(LDSCRIPT)
 
 %.hex: %.elf
 	@echo "[HEX]\t$@"
-	@$(SIZE) "$<" | awk '{ print; if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
+	@echo "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
+	@$(SIZE) "$<" | awk '{ if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
 # compiler generated dependency info

@@ -1,11 +1,10 @@
 #include <time.h>
+#include <stdint.h>
 
 #include "globals.h"
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
-
-#include <stdint.h>
 
 #define WANT_FADING
 #define RTC_COMPENSATE 0
@@ -29,7 +28,7 @@ const int tube36Pin = 23;
 frameBuffer_t frameBuffer;
 config_t cfg;
 
-uint32_t getTimestampFromString(char const* buffer, int len)
+uint32_t get_timestamp_from_string(char const* buffer, int len)
 {
   uint32_t timestamp = 0;
   for (int i = 0; i < len; i++)
@@ -104,37 +103,60 @@ void updateNixie(unsigned int frame)
   }
 }
 
+void get_tm_from_string(struct tm* tm, char const* buffer)
+{
+  tm->tm_mday = (buffer[0]  - '0') * 10 + (buffer[1]  - '0');
+  tm->tm_mon  = (buffer[2]  - '0') * 10 + (buffer[3]  - '0') - 1;
+  tm->tm_year = (buffer[4]  - '0') * 10 + (buffer[5]  - '0') + 100;
+  tm->tm_hour = (buffer[6]  - '0') * 10 + (buffer[7]  - '0');
+  tm->tm_min  = (buffer[8]  - '0') * 10 + (buffer[9]  - '0');
+  tm->tm_sec  = (buffer[10] - '0') * 10 + (buffer[11] - '0');
+}
+  
 // serialHandler
 inline
 void handleSerial(char const* buffer, int len)
 {
   if(strncmp(buffer, "ERROR", 5) == 0)
   {
-    ;//dbg1()Serial.println("FLUSHED SERIAL1");
+    dbg1("BT: ignoring 'error' message");
   }
   else if(*buffer == 'C' && len == 1)
   {
     cfg.generator = &generator_clock;
-    Serial1.println("Clock mode set to CLOCK");
+    Serial1.println("mode set to CLOCK");
   }
-  else if(*buffer == 'c' && len == 1)
+  else if(*buffer == 'O' && len == 1)
   {
     cfg.generator = &generator_counter;
-    Serial1.println("Clock mode set to COUNTER");
+    Serial1.println("mode set to COUNTER");
   }
-  else if (*buffer == 'A' && len == 1)
+  else if (*buffer == 'B' && len == 1)
   {
     cfg.generator = &generator_birthday;
-    Serial1.println("Clock mode set to BIRTHDAY");
+    Serial1.println("mode set to BIRTHDAY");
   }
-  else if (*buffer == 'Y' && len == 11)
-    //Y1419891762
+  else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
     buffer++;
-    cfg.newyear_target = getTimestampFromString(buffer, 10);
+    struct tm *tm_target;
+    struct tm tm_local;
+    if (len == 13)
+    {
+      //Ymmddyyhhmmss
+      get_tm_from_string(&tm_local, buffer);
+      cfg.newyear_target = mktime(&tm_local);
+      tm_target = &tm_local;
+    }
+    else
+    {
+      cfg.newyear_target = get_timestamp_from_string(buffer, 10);
+      tm_target = gmtime((const long int*)&cfg.newyear_target);
+    }
     cfg.generator = &generator_newyear;
-    Serial1.println("Clock mode set to NEWYEAR, counting to:");
-    struct tm *tm_target = gmtime((const long int*)&cfg.newyear_target);
+    Serial1.print("Clock mode set to NEWYEAR, counting down to: ");
+    Serial1.print(cfg.newyear_target, DEC);
+    Serial1.print(" aka ");
     Serial1.print(tm_target->tm_mday, DEC);
     Serial1.print("/");
     Serial1.print(tm_target->tm_mon+1, DEC);
@@ -147,12 +169,12 @@ void handleSerial(char const* buffer, int len)
     Serial1.print(":");
     Serial1.println(tm_target->tm_sec, DEC);
   }
-  else if (*buffer == 't' && len == 1)
+  else if (*buffer == 'R' && len == 1)
   {
     cfg.want_transition_now = 1;
     Serial1.println("Asked for a new transition... NOW!");
   }
-  else if (*buffer == 'f' && len == 1)
+  else if (*buffer == 'F' && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
     Serial1.print("Show FPS mode is ");
@@ -171,15 +193,28 @@ void handleSerial(char const* buffer, int len)
     rtc_set(newTime);
     Serial1.println("Time set");
   }
-  else if(*buffer == 'U' && len == 11)
+  else if (*buffer == 'D' && (len == 12 || len == 13))
   {
-    // set time with an unix timestamp
     buffer++;
-    uint32_t newTime = getTimestampFromString(buffer, 10);
+    struct tm *tm_target;
+    struct tm tm_local;
+    time_t newTime;
+    if (len == 13)
+    {
+      //Dmmddyyhhmmss
+      get_tm_from_string(&tm_local, buffer);
+      newTime = mktime(&tm_local);
+      tm_target = &tm_local;
+    }
+    else
+    {
+      newTime = get_timestamp_from_string(buffer, 10);
+      tm_target = gmtime(&newTime);
+    }
     rtc_set(newTime);
     Serial1.print("Time set to timestamp=");
     Serial1.println(newTime);
-    struct tm *tm_target = gmtime((const long int*)&newTime);
+    tm_target = gmtime((const long int*)&newTime);
     Serial1.print(tm_target->tm_mday, DEC);
     Serial1.print("/");
     Serial1.print(tm_target->tm_mon+1, DEC);
@@ -192,7 +227,7 @@ void handleSerial(char const* buffer, int len)
     Serial1.print(":");
     Serial1.println(tm_target->tm_sec, DEC);
   }
-  else if(*buffer == 'D' && len == 5)
+  else if(*buffer == 'W' && len == 5)
   {
     buffer++;
     cfg.generator = &generator_countdown;
@@ -200,21 +235,27 @@ void handleSerial(char const* buffer, int len)
     Serial1.print("Counting down to ");
     Serial1.println(cfg.countdown_ms, DEC);
   }
+  else if (*buffer == 'i' && len == 1)
+  {
+    Serial1.println();
+    Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
+    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
+    Serial1.println("Compiler version " __VERSION__ );
+  }
   else if (len > 0)
   {
-    Serial1.println("This is NixieClock Software v0.1");
+    Serial1.println();
     Serial1.print("Unknown command <");
-    Serial1.print(*buffer);
-    Serial1.println(">. Supported commands are:");
-    Serial1.println("A : birthday mode");
-    Serial1.println("C : clock mode");
-    Serial1.println("Yxxx : new year mode, xxx is a UNIX timestamp");
-    Serial1.println("c : counter mode");
-    Serial1.println("t : ask for a new transition now");
-    Serial1.println("f : toggle showfps");
-    Serial1.println("THHMMSS : set time, e.g. T123759");
-    Serial1.println("Txxx : set time, xxx is a UNIX timestamp");
-    Serial1.println("DMMSS : countDown of MMSS, e.g. D9000 for 90 minutes");
+    Serial1.print(buffer);
+    Serial1.println(">. Supported commands follow");
+    Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
+    Serial1.println("Toggle options: show [F]ps");
+    Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
+    Serial1.println("Simple modes: [B]irthday, [C]lock, c[O]unter");
+    Serial1.println("Complex modes:");
+    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS"); // TODO: support DDMMYYHHMMSS
+    Serial1.println("- countdown: [W]MMSS, e.g. D9000 for 90 minutes");
+    // TODO: be able to change debug mode on the fly
   }
 }
 
@@ -275,29 +316,28 @@ int serialBufferLen = 0;
 // Main loop
 void loop()
 {
-  static uint32_t lastEnd = 0;
-  static uint32_t nextFpsMark = 1000*1000;
+  static uint32_t lastEnd = micros();
+  static uint32_t nextFpsMark = lastEnd + 1000*1000;
   static uint16_t fps = 0;
-  static uint32_t computation_time = 0;
-
-  if (cfg.show_fps && lastEnd >= nextFpsMark)
+  static uint32_t uptime = 0;
+  
+  if (lastEnd >= nextFpsMark)
   {
-    Serial1.print(millis() / 1000, DEC);
-    Serial1.print("s, fps=");
-    Serial1.print(fps, DEC);
-    Serial1.print(", ");
-    Serial1.print(computation_time / fps, DEC);
-    Serial1.print("us calc/frame");
+    uptime++;
+    if (cfg.show_fps)
+    {
+      Serial1.print("uptime=");
+      Serial1.print(uptime, DEC);
+      Serial1.print(", fps=");
+      Serial1.println(fps, DEC);
+    }
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
-    computation_time = 0;
   }
   fps++;
 
   // Generate what to display
-  uint32_t compute_begin = micros();
   cfg.generator();
-  computation_time = micros() - compute_begin;
 
   // Security: ensure that no nixie-dot is lit unless the nixie-digit is also lit (avoid too-high current)
   securityNixieDot();

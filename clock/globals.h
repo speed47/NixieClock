@@ -3,6 +3,19 @@
 
 #include <stdint.h>
 
+#ifndef GIT_REVISION
+# define GIT_REVISION none
+#endif
+#ifndef GIT_DIRTY
+# define GIT_DIRTY unknown
+#endif
+#if !defined(BUILD_TIME) and defined(TIME_T)
+# define BUILD_TIME TIME_T
+#endif
+
+#define _EXPAND2STR(str) #str
+#define EXPAND2STR(str) _EXPAND2STR(str)
+
 #define DEBUG_LEVEL_1 1
 #define DEBUG_LEVEL_2 2
 #define DEBUG_LEVEL_3 3
