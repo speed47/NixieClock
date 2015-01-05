@@ -7,7 +7,6 @@
 #include "generators.h"
 
 #define WANT_FADING
-#define RTC_COMPENSATE 0
 
 /* Configuration pins */
 

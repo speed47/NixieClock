@@ -80,6 +80,7 @@ CPPFLAGS += -DTIME_T=$(shell date +%s)
 CPPFLAGS += -DGIT_REVISION="$(GITREVISION)"
 CPPFLAGS += -DGIT_DIRTY="$(GITDIRTY)"
 CPPFLAGS += -DBUILD_TIME="$(BUILDTIME)"
+CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
