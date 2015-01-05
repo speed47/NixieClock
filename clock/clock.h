@@ -17,4 +17,13 @@ typedef union {
   } splitted;
 } time_u;
 
+void setup();
+void loop();
+void updateDots();
+void updateNixie(unsigned int frame);
+uint32_t getTimestampFromString(char const* buffer, int len);
+void securityNixieDot();
+void getTmFromString(struct tm* tm, char const* buffer);
+void handleSerial(char const* buffer, int len);
+
 #endif

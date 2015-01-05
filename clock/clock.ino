@@ -27,237 +27,8 @@ const int tube36Pin = 23;
 frameBuffer_t frameBuffer;
 config_t cfg;
 
-uint32_t get_timestamp_from_string(char const* buffer, int len)
-{
-  uint32_t timestamp = 0;
-  for (int i = 0; i < len; i++)
-  {
-    // missing check for uint overflow... but it's ok for good old unix timestamps
-    timestamp *= 10;
-    timestamp += buffer[i] - '0';
-  }
-  return timestamp;
-}
-
-inline
-void securityNixieDot()
-{
-  for (int i = 0; i < 6; i++)
-  {
-    if (frameBuffer.dots[i] != 0 && frameBuffer.digits[i] > 9)
-    {
-      dbg1("securityNixieDot: shutting down dot ");//, i, DEC);
-      frameBuffer.dots[i] = 0;
-    }
-  }
-}
-
-// Output subs, handle dots, nixie
-inline
-void updateDots()
-{
-  digitalWriteFast(dot1Pin, frameBuffer.dots[0]);
-  digitalWriteFast(dot2Pin, frameBuffer.dots[1]);
-  digitalWriteFast(dot3Pin, frameBuffer.dots[2]);
-  digitalWriteFast(dot4Pin, frameBuffer.dots[3]);
-  digitalWriteFast(dot5Pin, frameBuffer.dots[4]);
-  digitalWriteFast(dot6Pin, frameBuffer.dots[5]);
-}
-
-inline
-void updateNixie(unsigned int frame)
-{
-  // Disable all tubes
-  digitalWriteFast(tube14Pin, 0);
-  digitalWriteFast(tube25Pin, 0);
-  digitalWriteFast(tube36Pin, 0);
-
-  // Blanking time, waiting some time to be sure tubes are off before changing number
-  // Avoid ghosting
-  delayMicroseconds(75);
-
-  if(frame == 0)
-  {
-    // Display digit 1 & 4
-    GPIOD_PDOR = (frameBuffer.digits[2]<<4)+(frameBuffer.digits[5]);
-
-    // Enable Tube 1 & 4
-    digitalWriteFast(tube14Pin, 1);
-  }
-  else if(frame == 1)
-  {
-    // Display digit 2 & 5
-    GPIOD_PDOR = (frameBuffer.digits[1]<<4)+(frameBuffer.digits[4]);
-
-    // Enable Tube 2 & 5
-    digitalWriteFast(tube25Pin, 1);
-  }
-  else if(frame == 2)
-  {
-    // Display digit 3 & 6
-    GPIOD_PDOR = (frameBuffer.digits[0]<<4)+(frameBuffer.digits[3]);
-
-    // Enable Tube 3 & 6
-    digitalWriteFast(tube36Pin, 1);
-  }
-}
-
-void get_tm_from_string(struct tm* tm, char const* buffer)
-{
-  tm->tm_mday = (buffer[0]  - '0') * 10 + (buffer[1]  - '0');
-  tm->tm_mon  = (buffer[2]  - '0') * 10 + (buffer[3]  - '0') - 1;
-  tm->tm_year = (buffer[4]  - '0') * 10 + (buffer[5]  - '0') + 100;
-  tm->tm_hour = (buffer[6]  - '0') * 10 + (buffer[7]  - '0');
-  tm->tm_min  = (buffer[8]  - '0') * 10 + (buffer[9]  - '0');
-  tm->tm_sec  = (buffer[10] - '0') * 10 + (buffer[11] - '0');
-}
-  
-// serialHandler
-inline
-void handleSerial(char const* buffer, int len)
-{
-  if(strncmp(buffer, "ERROR", 5) == 0)
-  {
-    dbg1("BT: ignoring 'error' message");
-  }
-  else if(*buffer == 'C' && len == 1)
-  {
-    cfg.generator = &generator_clock;
-    Serial1.println("mode set to CLOCK");
-  }
-  else if(*buffer == 'O' && len == 1)
-  {
-    cfg.generator = &generator_counter;
-    Serial1.println("mode set to COUNTER");
-  }
-  else if (*buffer == 'B' && len == 1)
-  {
-    cfg.generator = &generator_birthday;
-    Serial1.println("mode set to BIRTHDAY");
-  }
-  else if (*buffer == 'Y' && (len == 12 || len == 13))
-  {
-    buffer++;
-    struct tm *tm_target;
-    struct tm tm_local;
-    if (len == 13)
-    {
-      //Ymmddyyhhmmss
-      get_tm_from_string(&tm_local, buffer);
-      cfg.newyear_target = mktime(&tm_local);
-      tm_target = &tm_local;
-    }
-    else
-    {
-      cfg.newyear_target = get_timestamp_from_string(buffer, 10);
-      tm_target = gmtime((const long int*)&cfg.newyear_target);
-    }
-    cfg.generator = &generator_newyear;
-    Serial1.print("Clock mode set to NEWYEAR, counting down to: ");
-    Serial1.print(cfg.newyear_target, DEC);
-    Serial1.print(" aka ");
-    Serial1.print(tm_target->tm_mday, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target->tm_mon+1, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target->tm_year+1900, DEC);
-    Serial1.print(" ");
-    Serial1.print(tm_target->tm_hour, DEC);
-    Serial1.print(":");
-    Serial1.print(tm_target->tm_min, DEC);
-    Serial1.print(":");
-    Serial1.println(tm_target->tm_sec, DEC);
-  }
-  else if (*buffer == 'R' && len == 1)
-  {
-    cfg.want_transition_now = 1;
-    Serial1.println("Asked for a new transition... NOW!");
-  }
-  else if (*buffer == 'F' && len == 1)
-  {
-    cfg.show_fps = !cfg.show_fps;
-    Serial1.print("Show FPS mode is ");
-    Serial1.println(cfg.show_fps ? "ON" : "OFF");
-  }
-  else if(*buffer == 'T' && len == 7)
-  {
-    buffer++;
-    uint32_t newTime = 0;
-    for(int i = 0; i < 3; i++)
-    {
-      newTime *= 60;
-      newTime += (buffer[0]-'0') * 10 + (buffer[1]-'0');
-      buffer += 2;
-    }
-    rtc_set(newTime);
-    Serial1.println("Time set");
-  }
-  else if (*buffer == 'D' && (len == 12 || len == 13))
-  {
-    buffer++;
-    struct tm *tm_target;
-    struct tm tm_local;
-    time_t newTime;
-    if (len == 13)
-    {
-      //Dmmddyyhhmmss
-      get_tm_from_string(&tm_local, buffer);
-      newTime = mktime(&tm_local);
-      tm_target = &tm_local;
-    }
-    else
-    {
-      newTime = get_timestamp_from_string(buffer, 10);
-      tm_target = gmtime(&newTime);
-    }
-    rtc_set(newTime);
-    Serial1.print("Time set to timestamp=");
-    Serial1.println(newTime);
-    tm_target = gmtime((const long int*)&newTime);
-    Serial1.print(tm_target->tm_mday, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target->tm_mon+1, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target->tm_year+1900, DEC);
-    Serial1.print(" ");
-    Serial1.print(tm_target->tm_hour, DEC);
-    Serial1.print(":");
-    Serial1.print(tm_target->tm_min, DEC);
-    Serial1.print(":");
-    Serial1.println(tm_target->tm_sec, DEC);
-  }
-  else if(*buffer == 'W' && len == 5)
-  {
-    buffer++;
-    cfg.generator = &generator_countdown;
-    cfg.countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
-    Serial1.print("Counting down to ");
-    Serial1.println(cfg.countdown_ms, DEC);
-  }
-  else if (*buffer == 'i' && len == 1)
-  {
-    Serial1.println();
-    Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
-    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
-    Serial1.println("Compiler version " __VERSION__ );
-  }
-  else if (len > 0)
-  {
-    Serial1.println();
-    Serial1.print("Unknown cmd <");
-    Serial1.print(buffer);
-    Serial1.println(">. Supported cmds are:");
-    Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
-    Serial1.println("Toggle options: show [F]ps");
-    Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
-    Serial1.println("Simple modes: [B]irthday, [C]lock, c[O]unter");
-    Serial1.println("Complex modes:");
-    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS"); // TODO: support DDMMYYHHMMSS
-    Serial1.println("- countdown: [W]MMSS, e.g. D9000 for 90 minutes");
-    // TODO: be able to change debug mode on the fly
-  }
-}
-
+char serialBuffer[SERIAL_BUFFER_SIZE];
+int serialBufferLen = 0;
 
 void setup()
 {
@@ -308,9 +79,6 @@ void setup()
   delay(1000);
   dbg1("up, entering main loop");
 }
-
-char serialBuffer[SERIAL_BUFFER_SIZE];
-int serialBufferLen = 0;
 
 // Main loop
 void loop()
@@ -378,4 +146,240 @@ void loop()
     lastEnd = micros();
   }  
 }
+
+// Output subs, handle dots, nixie
+inline
+void updateDots()
+{
+  digitalWriteFast(dot1Pin, frameBuffer.dots[0]);
+  digitalWriteFast(dot2Pin, frameBuffer.dots[1]);
+  digitalWriteFast(dot3Pin, frameBuffer.dots[2]);
+  digitalWriteFast(dot4Pin, frameBuffer.dots[3]);
+  digitalWriteFast(dot5Pin, frameBuffer.dots[4]);
+  digitalWriteFast(dot6Pin, frameBuffer.dots[5]);
+}
+
+inline
+void updateNixie(unsigned int frame)
+{
+  // Disable all tubes
+  digitalWriteFast(tube14Pin, 0);
+  digitalWriteFast(tube25Pin, 0);
+  digitalWriteFast(tube36Pin, 0);
+
+  // Blanking time, waiting some time to be sure tubes are off before changing number
+  // Avoid ghosting
+  delayMicroseconds(75);
+
+  if(frame == 0)
+  {
+    // Display digit 1 & 4
+    GPIOD_PDOR = (frameBuffer.digits[2]<<4)+(frameBuffer.digits[5]);
+
+    // Enable Tube 1 & 4
+    digitalWriteFast(tube14Pin, 1);
+  }
+  else if(frame == 1)
+  {
+    // Display digit 2 & 5
+    GPIOD_PDOR = (frameBuffer.digits[1]<<4)+(frameBuffer.digits[4]);
+
+    // Enable Tube 2 & 5
+    digitalWriteFast(tube25Pin, 1);
+  }
+  else if(frame == 2)
+  {
+    // Display digit 3 & 6
+    GPIOD_PDOR = (frameBuffer.digits[0]<<4)+(frameBuffer.digits[3]);
+
+    // Enable Tube 3 & 6
+    digitalWriteFast(tube36Pin, 1);
+  }
+}
+
+/// ZZZZ
+
+uint32_t getTimestampFromString(char const* buffer, int len)
+{
+  uint32_t timestamp = 0;
+  for (int i = 0; i < len; i++)
+  {
+    // missing check for uint overflow... but it's ok for good old unix timestamps
+    timestamp *= 10;
+    timestamp += buffer[i] - '0';
+  }
+  return timestamp;
+}
+
+inline
+void securityNixieDot()
+{
+  for (int i = 0; i < 6; i++)
+  {
+    if (frameBuffer.dots[i] != 0 && frameBuffer.digits[i] > 9)
+    {
+      dbg1("securityNixieDot: shutting down dot ");//, i, DEC);
+      frameBuffer.dots[i] = 0;
+    }
+  }
+}
+
+void getTmFromString(struct tm* tm, char const* buffer)
+{
+  tm->tm_mday = (buffer[0]  - '0') * 10 + (buffer[1]  - '0');
+  tm->tm_mon  = (buffer[2]  - '0') * 10 + (buffer[3]  - '0') - 1;
+  tm->tm_year = (buffer[4]  - '0') * 10 + (buffer[5]  - '0') + 100;
+  tm->tm_hour = (buffer[6]  - '0') * 10 + (buffer[7]  - '0');
+  tm->tm_min  = (buffer[8]  - '0') * 10 + (buffer[9]  - '0');
+  tm->tm_sec  = (buffer[10] - '0') * 10 + (buffer[11] - '0');
+}
+  
+// serialHandler
+inline
+void handleSerial(char const* buffer, int len)
+{
+  if(strncmp(buffer, "ERROR", 5) == 0)
+  {
+    dbg1("BT: ignoring 'error' message");
+  }
+  else if(*buffer == 'C' && len == 1)
+  {
+    cfg.generator = &generator_clock;
+    Serial1.println("mode set to CLOCK");
+  }
+  else if(*buffer == 'O' && len == 1)
+  {
+    cfg.generator = &generator_counter;
+    Serial1.println("mode set to COUNTER");
+  }
+  else if (*buffer == 'B' && len == 1)
+  {
+    cfg.generator = &generator_birthday;
+    Serial1.println("mode set to BIRTHDAY");
+  }
+  else if (*buffer == 'Y' && (len == 12 || len == 13))
+  {
+    buffer++;
+    struct tm *tm_target;
+    struct tm tm_local;
+    if (len == 13)
+    {
+      //Ymmddyyhhmmss
+      getTmFromString(&tm_local, buffer);
+      cfg.newyear_target = mktime(&tm_local);
+      tm_target = &tm_local;
+    }
+    else
+    {
+      cfg.newyear_target = getTimestampFromString(buffer, 10);
+      tm_target = gmtime((const long int*)&cfg.newyear_target);
+    }
+    cfg.generator = &generator_newyear;
+    Serial1.print("Clock mode set to NEWYEAR, counting down to: ");
+    Serial1.print(cfg.newyear_target, DEC);
+    Serial1.print(" aka ");
+    Serial1.print(tm_target->tm_mday, DEC);
+    Serial1.print("/");
+    Serial1.print(tm_target->tm_mon+1, DEC);
+    Serial1.print("/");
+    Serial1.print(tm_target->tm_year+1900, DEC);
+    Serial1.print(" ");
+    Serial1.print(tm_target->tm_hour, DEC);
+    Serial1.print(":");
+    Serial1.print(tm_target->tm_min, DEC);
+    Serial1.print(":");
+    Serial1.println(tm_target->tm_sec, DEC);
+  }
+  else if (*buffer == 'R' && len == 1)
+  {
+    cfg.want_transition_now = 1;
+    Serial1.println("Asked for a new transition... NOW!");
+  }
+  else if (*buffer == 'F' && len == 1)
+  {
+    cfg.show_fps = !cfg.show_fps;
+    Serial1.print("Show FPS mode is ");
+    Serial1.println(cfg.show_fps ? "ON" : "OFF");
+  }
+  else if(*buffer == 'T' && len == 7)
+  {
+    buffer++;
+    uint32_t newTime = 0;
+    for(int i = 0; i < 3; i++)
+    {
+      newTime *= 60;
+      newTime += (buffer[0]-'0') * 10 + (buffer[1]-'0');
+      buffer += 2;
+    }
+    rtc_set(newTime);
+    Serial1.println("Time set");
+  }
+  else if (*buffer == 'D' && (len == 12 || len == 13))
+  {
+    buffer++;
+    struct tm *tm_target;
+    struct tm tm_local;
+    time_t newTime;
+    if (len == 13)
+    {
+      //Dmmddyyhhmmss
+      getTmFromString(&tm_local, buffer);
+      newTime = mktime(&tm_local);
+      tm_target = &tm_local;
+    }
+    else
+    {
+      newTime = getTimestampFromString(buffer, 10);
+      tm_target = gmtime(&newTime);
+    }
+    rtc_set(newTime);
+    Serial1.print("Time set to timestamp=");
+    Serial1.println(newTime);
+    tm_target = gmtime((const long int*)&newTime);
+    Serial1.print(tm_target->tm_mday, DEC);
+    Serial1.print("/");
+    Serial1.print(tm_target->tm_mon+1, DEC);
+    Serial1.print("/");
+    Serial1.print(tm_target->tm_year+1900, DEC);
+    Serial1.print(" ");
+    Serial1.print(tm_target->tm_hour, DEC);
+    Serial1.print(":");
+    Serial1.print(tm_target->tm_min, DEC);
+    Serial1.print(":");
+    Serial1.println(tm_target->tm_sec, DEC);
+  }
+  else if(*buffer == 'W' && len == 5)
+  {
+    buffer++;
+    cfg.generator = &generator_countdown;
+    cfg.countdown_ms = ((buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0')) * 1000;
+    Serial1.print("Counting down to ");
+    Serial1.println(cfg.countdown_ms, DEC);
+  }
+  else if (*buffer == 'i' && len == 1)
+  {
+    Serial1.println();
+    Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
+    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
+    Serial1.println("Compiler version " __VERSION__ );
+  }
+  else if (len > 0)
+  {
+    Serial1.println();
+    Serial1.print("Unknown cmd <");
+    Serial1.print(buffer);
+    Serial1.println(">. Supported cmds are:");
+    Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
+    Serial1.println("Toggle options: show [F]ps");
+    Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
+    Serial1.println("Simple modes: [B]irthday, [C]lock, c[O]unter");
+    Serial1.println("Complex modes:");
+    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS"); // TODO: support DDMMYYHHMMSS
+    Serial1.println("- countdown: [W]MMSS, e.g. D9000 for 90 minutes");
+    // TODO: be able to change debug mode on the fly
+  }
+}
+
+
+
 
