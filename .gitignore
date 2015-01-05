@@ -1,1 +1,4 @@
 build/
+Makefile
+NixieClock.elf
+NixieClock.hex
