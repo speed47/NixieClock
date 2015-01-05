@@ -244,9 +244,9 @@ void handleSerial(char const* buffer, int len)
   else if (len > 0)
   {
     Serial1.println();
-    Serial1.print("Unknown command <");
+    Serial1.print("Unknown cmd <");
     Serial1.print(buffer);
-    Serial1.println(">. Supported commands follow");
+    Serial1.println(">. Supported cmds are:");
     Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
     Serial1.println("Toggle options: show [F]ps");
     Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
@@ -301,7 +301,7 @@ void setup()
   cfg.want_transition_now = 0;
   cfg.countdown_ms = 0;
   cfg.newyear_target = 0;
-  cfg.show_fps = 1; // default value, can be configured via bt
+  cfg.show_fps = 0; // default value, can be configured via bt
 
   // Init wait (pb with ws2811)
   dbg1("sleeping for ws2811 init");
