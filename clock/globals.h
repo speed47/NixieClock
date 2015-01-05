@@ -16,29 +16,6 @@
 #define _EXPAND2STR(str) #str
 #define EXPAND2STR(str) _EXPAND2STR(str)
 
-#define DEBUG_LEVEL_1 1
-#define DEBUG_LEVEL_2 2
-#define DEBUG_LEVEL_3 3
-
-#define DEBUG DEBUG_LEVEL_1
-
-#if DEBUG >= DEBUG_LEVEL_1
-# define dbg1(s) { Serial1.print("Debug1: "); Serial1.println(s); };
-#else
-# define dbg1(s) ;
-#endif
-#if DEBUG >= DEBUG_LEVEL_2
-# define dbg2(s) { Serial1.print("Debug2: "); Serial1.println(s); };
-#else
-# define dbg2(s) ;
-#endif
-#if DEBUG >= DEBUG_LEVEL_3
-# define dbg3(s) { Serial1.print("Debug3: "); Serial1.println(s); };
-#else
-# define dbg3(s) ;
-#endif
-#define dbg(s) dbg1(s)
-
 typedef struct 
 {
   uint8_t digits[6];

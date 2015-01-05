@@ -1,6 +1,7 @@
 #include "generators.h"
 #include "makeColor.h"
 #include "globals.h"
+#include "debug.h"
 
 // helper functions
 void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)
@@ -190,20 +191,20 @@ void generator_clock()
     */
     if (transition_step == 1) // first loop, init stuff
     {
-      dbg("step 1 => 2");
+      dbg2("transition step 1 => 2");
       transition_step = 2;
     }
     else if (transition_step >= 2 and transition_step <= 9)
     {
       if (currentTime != lastTime)
       {
-        dbg("step++");
+        dbg2("transition step++");
         transition_step++;
       }
     }
     else
     {
-      dbg("transition done!");
+      dbg2("transition done!");
       transition_step = 0; // done!
     }
 

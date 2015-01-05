@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "globals.h"
+#include "debug.h"
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
@@ -26,6 +27,7 @@ const int tube36Pin = 23;
 // also declared in globals.h for use in other files
 uint32_t uptime = 0;
 frameBuffer_t frameBuffer;
+char printbuf[DEBUG_BUFFER_SIZE];
 config_t cfg = {
   .generator = &generator_clock,
   .countdown_target_millis = 0,
