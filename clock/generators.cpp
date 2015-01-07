@@ -1,7 +1,7 @@
 #include "generators.h"
 #include "makeColor.h"
 #include "globals.h"
-#include "debug.h"
+#include "btprint.h"
 
 // helper functions
 void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)

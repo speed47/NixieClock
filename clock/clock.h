@@ -25,5 +25,6 @@ uint32_t getTimestampFromString(char const* buffer, int len);
 void securityNixieDot();
 void getTmFromString(struct tm* tm, char const* buffer);
 void handleSerial(char const* buffer, int len);
+char *seconds2duration(uint32_t seconds);
 
 #endif

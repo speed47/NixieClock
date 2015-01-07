@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "globals.h"
-#include "debug.h"
+#include "btprint.h"
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
@@ -35,6 +35,7 @@ config_t cfg = {
   .dot_mode = DOT_MODE_CHASE,
   .want_transition_now = 0,
   .show_fps = 0,
+  .show_time = 0,
 };
 
 char serialBuffer[SERIAL_BUFFER_SIZE];
@@ -88,7 +89,13 @@ void loop()
   static uint32_t lastEnd = micros();
   static uint32_t nextFpsMark = lastEnd + 1000*1000;
   static uint16_t fps = 0;
+  static uint32_t lastTime = RTC_TSR;
   
+  if (cfg.show_time && lastTime != RTC_TSR)
+  {
+    Serial1.println(RTC_TSR, DEC);
+    lastTime = RTC_TSR;
+  }
   if (lastEnd >= nextFpsMark)
   {
     uptime++;
@@ -198,8 +205,6 @@ void updateNixie(unsigned int frame)
   }
 }
 
-/// ZZZZ
-
 uint32_t getTimestampFromString(char const* buffer, int len)
 {
   uint32_t timestamp = 0;
@@ -302,6 +307,12 @@ void handleSerial(char const* buffer, int len)
     Serial1.print("Show FPS mode is ");
     Serial1.println(cfg.show_fps ? "ON" : "OFF");
   }
+  else if (*buffer == 'M' && len == 1)
+  {
+    cfg.show_time = !cfg.show_time;
+    Serial1.print("Show TIME mode is ");
+    Serial1.println(cfg.show_time ? "ON" : "OFF");
+  }
   else if(*buffer == 'T' && len == 7)
   {
     buffer++;
@@ -366,9 +377,7 @@ void handleSerial(char const* buffer, int len)
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
     Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
     Serial1.println("Compiler version " __VERSION__ );
-    Serial1.print("Uptime is ");
-    Serial1.print(uptime, DEC);
-    Serial1.println(" seconds");
+    btprintln("Uptime is %s (%lu seconds)", seconds2duration(uptime), uptime);
     Serial1.print("Teensy core is running at ");
     Serial1.print(F_CPU / 1000000, DEC);
     Serial1.println(" MHz");
@@ -380,16 +389,43 @@ void handleSerial(char const* buffer, int len)
     Serial1.print(buffer);
     Serial1.println(">. Supported cmds are:");
     Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
-    Serial1.println("Toggle options: show [F]ps");
+    Serial1.println("Toggle options: show [F]ps, show ti[M]e");
     Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
     Serial1.println("Simple modes: [B]irthday, [C]lock, c[O]unter");
     Serial1.println("Complex modes:");
-    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS"); // TODO: support DDMMYYHHMMSS
+    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS");
     Serial1.println("- countdown: [W]MMSS, e.g. D9000 for 90 minutes");
     // TODO: be able to change debug mode on the fly
   }
 }
 
+// caller should not free() the returned pointer
+char *seconds2duration(uint32_t seconds)
+{
+  int days    = seconds / 86400;
+  seconds    -= days    * 86400;
+  int hours   = seconds / 3600;
+  seconds    -= hours   * 3600;
+  int minutes = seconds / 60;
+  seconds    -= minutes * 60;
 
+  if (days > 0)
+  {
+    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dday%s+%02dh%02dm%02lus", days, (days == 1 ? "" : "s"), hours, minutes, seconds);
+  }
+  else if (hours > 0)
+  {
+    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dh%02dm%02lus", hours, minutes, seconds);
+  }
+  else if (minutes > 0)
+  {
+    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dm%02lus", minutes, seconds);
+  }
+  else
+  {
+    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%lu", seconds);
+  }
+  return printbuf;
+}
 
 

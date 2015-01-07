@@ -48,6 +48,7 @@ typedef struct
   int want_transition_now;
   // other stuff
   int show_fps; 
+  int show_time;
 } config_t;
 
 extern config_t cfg;
