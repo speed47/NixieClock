@@ -6,6 +6,7 @@
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
+#include "gmtime_static.h"
 
 #define WANT_FADING
 
@@ -266,35 +267,33 @@ void handleSerial(char const* buffer, int len)
   else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
     buffer++;
-    struct tm *tm_target;
-    struct tm tm_local;
+    struct tm tm_target;
     if (len == 13)
     {
       //Ymmddyyhhmmss
-      getTmFromString(&tm_local, buffer);
-      cfg.newyear_target = mktime(&tm_local);
-      tm_target = &tm_local;
+      getTmFromString(&tm_target, buffer);
+      cfg.newyear_target = mktime(&tm_target);
     }
     else
     {
       cfg.newyear_target = getTimestampFromString(buffer, 10);
-      tm_target = gmtime((const long int*)&cfg.newyear_target);
+      gmtime_static(&tm_target, &cfg.newyear_target);
     }
     cfg.generator = &generator_newyear;
     Serial1.print("Clock mode set to NEWYEAR, counting down to: ");
     Serial1.print(cfg.newyear_target, DEC);
     Serial1.print(" aka ");
-    Serial1.print(tm_target->tm_mday, DEC);
+    Serial1.print(tm_target.tm_mday, DEC);
     Serial1.print("/");
-    Serial1.print(tm_target->tm_mon+1, DEC);
+    Serial1.print(tm_target.tm_mon+1, DEC);
     Serial1.print("/");
-    Serial1.print(tm_target->tm_year+1900, DEC);
+    Serial1.print(tm_target.tm_year+1900, DEC);
     Serial1.print(" ");
-    Serial1.print(tm_target->tm_hour, DEC);
+    Serial1.print(tm_target.tm_hour, DEC);
     Serial1.print(":");
-    Serial1.print(tm_target->tm_min, DEC);
+    Serial1.print(tm_target.tm_min, DEC);
     Serial1.print(":");
-    Serial1.println(tm_target->tm_sec, DEC);
+    Serial1.println(tm_target.tm_sec, DEC);
   }
   else if (*buffer == 'R' && len == 1)
   {
@@ -329,36 +328,34 @@ void handleSerial(char const* buffer, int len)
   else if (*buffer == 'D' && (len == 12 || len == 13))
   {
     buffer++;
-    struct tm *tm_target;
-    struct tm tm_local;
+    struct tm tm_target;
     time_t newTime;
     if (len == 13)
     {
       //Dmmddyyhhmmss
-      getTmFromString(&tm_local, buffer);
-      newTime = mktime(&tm_local);
-      tm_target = &tm_local;
+      getTmFromString(&tm_target, buffer);
+      newTime = mktime(&tm_target);
     }
     else
     {
       newTime = getTimestampFromString(buffer, 10);
-      tm_target = gmtime(&newTime);
+      gmtime_static(&tm_target, &newTime);
     }
     rtc_set(newTime);
     Serial1.print("Time set to timestamp=");
     Serial1.println(newTime);
-    tm_target = gmtime((const long int*)&newTime);
-    Serial1.print(tm_target->tm_mday, DEC);
+    gmtime_static(&tm_target, &newTime);
+    Serial1.print(tm_target.tm_mday, DEC);
     Serial1.print("/");
-    Serial1.print(tm_target->tm_mon+1, DEC);
+    Serial1.print(tm_target.tm_mon+1, DEC);
     Serial1.print("/");
-    Serial1.print(tm_target->tm_year+1900, DEC);
+    Serial1.print(tm_target.tm_year+1900, DEC);
     Serial1.print(" ");
-    Serial1.print(tm_target->tm_hour, DEC);
+    Serial1.print(tm_target.tm_hour, DEC);
     Serial1.print(":");
-    Serial1.print(tm_target->tm_min, DEC);
+    Serial1.print(tm_target.tm_min, DEC);
     Serial1.print(":");
-    Serial1.println(tm_target->tm_sec, DEC);
+    Serial1.println(tm_target.tm_sec, DEC);
   }
   else if(*buffer == 'W' && len == 5)
   {

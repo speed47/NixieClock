@@ -42,7 +42,7 @@ typedef struct
   // config for generator_countdown:
   uint32_t countdown_target_millis;
   // config for generator_newyear:
-  uint32_t newyear_target;
+  time_t newyear_target;
   // config for generator_clock:
   dotMode dot_mode;
   int want_transition_now;
