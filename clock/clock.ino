@@ -402,6 +402,7 @@ void handleSerial(char const* buffer, int len)
 // caller should not free() the returned pointer
 char *seconds2duration(uint32_t seconds)
 {
+  static char buffer[20];
   int days    = seconds / 86400;
   seconds    -= days    * 86400;
   int hours   = seconds / 3600;
@@ -411,21 +412,21 @@ char *seconds2duration(uint32_t seconds)
 
   if (days > 0)
   {
-    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dday%s+%02dh%02dm%02lus", days, (days == 1 ? "" : "s"), hours, minutes, seconds);
+    sniprintf(buffer, 20, "%dday%s+%02dh%02dm%02lus", days, (days == 1 ? "" : "s"), hours, minutes, seconds);
   }
   else if (hours > 0)
   {
-    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dh%02dm%02lus", hours, minutes, seconds);
+    sniprintf(buffer, 20, "%dh%02dm%02lus", hours, minutes, seconds);
   }
   else if (minutes > 0)
   {
-    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%dm%02lus", minutes, seconds);
+    sniprintf(buffer, 20, "%dm%02lus", minutes, seconds);
   }
   else
   {
-    sniprintf(printbuf, DEBUG_BUFFER_SIZE, "%lu", seconds);
+    sniprintf(buffer, 20, "%lu", seconds);
   }
-  return printbuf;
+  return buffer;
 }
 
 
