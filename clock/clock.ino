@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "globals.h"
-#include "btprint.h"
+#include "printbuf.h"
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
@@ -28,7 +28,7 @@ const int tube36Pin = 23;
 // also declared in globals.h for use in other files
 uint32_t uptime = 0;
 frameBuffer_t frameBuffer;
-char printbuf[DEBUG_BUFFER_SIZE];
+char _printbuf[PRINT_BUFFER_SIZE];
 config_t cfg = {
   .generator = &generator_clock,
   .countdown_target_millis = 0,
@@ -44,13 +44,16 @@ int serialBufferLen = 0;
 
 void setup()
 {
+  // Init BT Serial
+  Serial1.begin(115200, SERIAL_8N1);
+
 #ifdef RTC_COMPENSATE
   // compensate RTC
   rtc_compensate(RTC_COMPENSATE);
+  dbg1("starting up, rtc_compensate is %d", RTC_COMPENSATE);
+#else
+  dbg1("starting up");
 #endif
-
-  // Init BT Serial
-  Serial1.begin(115200, SERIAL_8N1);
 
   // Set PORTD as output
   pinMode(2, OUTPUT);
@@ -94,7 +97,7 @@ void loop()
   
   if (cfg.show_time && lastTime != RTC_TSR)
   {
-    Serial1.println(RTC_TSR, DEC);
+    printbt("%lu\n", RTC_TSR);
     lastTime = RTC_TSR;
   }
   if (lastEnd >= nextFpsMark)
@@ -102,10 +105,7 @@ void loop()
     uptime++;
     if (cfg.show_fps)
     {
-      Serial1.print("uptime=");
-      Serial1.print(uptime, DEC);
-      Serial1.print(", fps=");
-      Serial1.println(fps, DEC);
+      printbt("uptime=%lu, fps=%d\n", uptime, fps);
     }
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
@@ -247,7 +247,7 @@ void handleSerial(char const* buffer, int len)
 {
   if(strncmp(buffer, "ERROR", 5) == 0)
   {
-    dbg1("BT: ignoring 'error' message");
+    ;//dbg1("BT: ignoring 'error' message");
   }
   else if(*buffer == 'C' && len == 1)
   {
@@ -280,20 +280,9 @@ void handleSerial(char const* buffer, int len)
       gmtime_static(&tm_target, &cfg.newyear_target);
     }
     cfg.generator = &generator_newyear;
-    Serial1.print("Clock mode set to NEWYEAR, counting down to: ");
-    Serial1.print(cfg.newyear_target, DEC);
-    Serial1.print(" aka ");
-    Serial1.print(tm_target.tm_mday, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target.tm_mon+1, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target.tm_year+1900, DEC);
-    Serial1.print(" ");
-    Serial1.print(tm_target.tm_hour, DEC);
-    Serial1.print(":");
-    Serial1.print(tm_target.tm_min, DEC);
-    Serial1.print(":");
-    Serial1.println(tm_target.tm_sec, DEC);
+    printbt("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
+      cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec);
   }
   else if (*buffer == 'R' && len == 1)
   {
@@ -374,7 +363,7 @@ void handleSerial(char const* buffer, int len)
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
     Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
     Serial1.println("Compiler version " __VERSION__ );
-    btprintln("Uptime is %s (%lu seconds)", seconds2duration(uptime), uptime);
+    printbt("Uptime is %s (%lu seconds)", seconds2duration(uptime), uptime);
     Serial1.print("Teensy core is running at ");
     Serial1.print(F_CPU / 1000000, DEC);
     Serial1.println(" MHz");

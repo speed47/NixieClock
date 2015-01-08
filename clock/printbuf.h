@@ -1,7 +1,7 @@
-#ifndef _DEBUG_H
-#define _DEBUG_H
+#ifndef _PRINTBUF_H
+#define _PRINTBUF_H
 
-#define DEBUG_BUFFER_SIZE 128
+#define PRINT_BUFFER_SIZE 128
 
 #define DEBUG_LEVEL_1 1
 #define DEBUG_LEVEL_2 2
@@ -19,18 +19,18 @@
 # define DEBUG_OUTPUT DEBUG_OUTPUT_BT
 #endif
 
-extern char printbuf[DEBUG_BUFFER_SIZE];
+extern char _printbuf[PRINT_BUFFER_SIZE];
 
-#define btprintln(...) { \
-  sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
-  Serial1.println(printbuf); \
+#define printbt(...) { \
+  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
+  Serial1.print(_printbuf); \
 }
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_1
 # define dbg1(...) { \
-  sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
+  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg1: "); \
-  DEBUG_OUTPUT.println(printbuf); \
+  DEBUG_OUTPUT.print(_printbuf); \
 }
 #else
 # define dbg1(...) ;
@@ -38,9 +38,9 @@ extern char printbuf[DEBUG_BUFFER_SIZE];
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_2
 # define dbg2(...) { \
-  sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
+  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg2: "); \
-  DEBUG_OUTPUT.println(printbuf); \
+  DEBUG_OUTPUT.print(_printbuf); \
 }
 #else
 # define dbg2(...) ;
@@ -48,9 +48,9 @@ extern char printbuf[DEBUG_BUFFER_SIZE];
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_3
 # define dbg3(...) { \
-  sniprintf(printbuf, DEBUG_BUFFER_SIZE, __VA_ARGS__); \
+  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg3: "); \
-  DEBUG_OUTPUT.println(printbuf); \
+  DEBUG_OUTPUT.print(_printbuf); \
 }
 #else
 # define dbg3(...) ;
