@@ -137,7 +137,7 @@ void generator_clock()
     transition_step = 1;
   }
 
-  if (frameBuffer.digits[5] == 3 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transition_step == 0)
+  if (frameBuffer.digits[5] == 2 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transition_step == 0)
   {
     transition_step = 1;
   }
