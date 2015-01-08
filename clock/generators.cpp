@@ -98,62 +98,25 @@ void generator_clock()
   /* UPDATE DOTS */
   if (cfg.dot_mode == DOT_MODE_CHASE)
   {
-    // yes, we could use loops below, but this way right values are computed at compile time and we're freaking fast
     if (currentTimeReal % 4 == 0)
-    {
-      frameBuffer.dots[5] = (RTC_TPR > 32768/7*1);
-      frameBuffer.dots[4] = (RTC_TPR > 32768/7*2);
-      frameBuffer.dots[3] = (RTC_TPR > 32768/7*3);
-      frameBuffer.dots[2] = (RTC_TPR > 32768/7*4);
-      frameBuffer.dots[1] = (RTC_TPR > 32768/7*5);
-      frameBuffer.dots[0] = (RTC_TPR > 32768/7*6);
-    }
+      for (int i=5; i>=0; i--)
+        frameBuffer.dots[i] = (RTC_TPR > 32768/7*(6-(uint32_t)i));
     else if (currentTimeReal % 4 == 1)
-    {
-      frameBuffer.dots[5] = (RTC_TPR < 32768/7*1);
-      frameBuffer.dots[4] = (RTC_TPR < 32768/7*2);
-      frameBuffer.dots[3] = (RTC_TPR < 32768/7*3);
-      frameBuffer.dots[2] = (RTC_TPR < 32768/7*4);
-      frameBuffer.dots[1] = (RTC_TPR < 32768/7*5);
-      frameBuffer.dots[0] = (RTC_TPR < 32768/7*6);
-    }
+      for (int i=5; i>=0; i--)
+        frameBuffer.dots[i] = (RTC_TPR < 32768/7*(6-(uint32_t)i));
     else if (currentTimeReal % 4 == 2)
-    {
-      frameBuffer.dots[5] = (RTC_TPR > 32768/7*6);
-      frameBuffer.dots[4] = (RTC_TPR > 32768/7*5);
-      frameBuffer.dots[3] = (RTC_TPR > 32768/7*4);
-      frameBuffer.dots[2] = (RTC_TPR > 32768/7*3);
-      frameBuffer.dots[1] = (RTC_TPR > 32768/7*2);
-      frameBuffer.dots[0] = (RTC_TPR > 32768/7*1);
-    }
+      for (int i=5; i>=0; i--)
+        frameBuffer.dots[i] = (RTC_TPR > 32768/7*((uint32_t)i+1));
     else // aka (currentTimeReal % 4 == 3)
-    {
-      frameBuffer.dots[5] = (RTC_TPR < 32768/7*6);
-      frameBuffer.dots[4] = (RTC_TPR < 32768/7*5);
-      frameBuffer.dots[3] = (RTC_TPR < 32768/7*4);
-      frameBuffer.dots[2] = (RTC_TPR < 32768/7*3);
-      frameBuffer.dots[1] = (RTC_TPR < 32768/7*2);
-      frameBuffer.dots[0] = (RTC_TPR < 32768/7*1);
-    }
+      for (int i=5; i>=0; i--)
+        frameBuffer.dots[i] = (RTC_TPR < 32768/7*((uint32_t)i+1));
   }
   else if (cfg.dot_mode == DOT_MODE_CLASSIC)
-  {
-    frameBuffer.dots[0] = ((currentTime % 6)==0);
-    frameBuffer.dots[1] = ((currentTime % 6)==1);
-    frameBuffer.dots[2] = ((currentTime % 6)==2);
-    frameBuffer.dots[3] = ((currentTime % 6)==3);
-    frameBuffer.dots[4] = ((currentTime % 6)==4);
-    frameBuffer.dots[5] = ((currentTime % 6)==5);
-  }
+    for (int i=0; i<6; i++)
+      frameBuffer.dots[i] = ((currentTime % 6)==(uint32_t)i);
   else if (cfg.dot_mode == DOT_MODE_PROGRESSIVE)
-  {
-    frameBuffer.dots[5] = (RTC_TPR >= 32768/7*1);
-    frameBuffer.dots[4] = (RTC_TPR >= 32768/7*2);
-    frameBuffer.dots[3] = (RTC_TPR >= 32768/7*3);
-    frameBuffer.dots[2] = (RTC_TPR >= 32768/7*4);
-    frameBuffer.dots[1] = (RTC_TPR >= 32768/7*5);
-    frameBuffer.dots[0] = (RTC_TPR >= 32768/7*6);
-  }
+    for (int i=5; i>=0; i--)
+      frameBuffer.dots[i] = (RTC_TPR >= 32768/7*(6-(uint32_t)i));
   
   /* UPDATE LEDS */
   // Slow rainbow, same color on each led
