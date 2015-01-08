@@ -30,7 +30,7 @@ extern char _printbuf[PRINT_BUFFER_SIZE];
 # define dbg1(...) { \
   sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg1: "); \
-  DEBUG_OUTPUT.print(_printbuf); \
+  DEBUG_OUTPUT.println(_printbuf); \
 }
 #else
 # define dbg1(...) ;
@@ -40,7 +40,7 @@ extern char _printbuf[PRINT_BUFFER_SIZE];
 # define dbg2(...) { \
   sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg2: "); \
-  DEBUG_OUTPUT.print(_printbuf); \
+  DEBUG_OUTPUT.println(_printbuf); \
 }
 #else
 # define dbg2(...) ;
@@ -50,7 +50,7 @@ extern char _printbuf[PRINT_BUFFER_SIZE];
 # define dbg3(...) { \
   sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
   DEBUG_OUTPUT.print("dbg3: "); \
-  DEBUG_OUTPUT.print(_printbuf); \
+  DEBUG_OUTPUT.println(_printbuf); \
 }
 #else
 # define dbg3(...) ;
