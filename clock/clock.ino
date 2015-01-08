@@ -363,7 +363,7 @@ void handleSerial(char const* buffer, int len)
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
     Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
     Serial1.println("Compiler version " __VERSION__ );
-    printbt("Uptime is %s (%lu seconds)", seconds2duration(uptime), uptime);
+    printbt("Uptime is %s (%lu seconds)\n", seconds2duration(uptime), uptime);
     Serial1.print("Teensy core is running at ");
     Serial1.print(F_CPU / 1000000, DEC);
     Serial1.println(" MHz");
@@ -410,7 +410,7 @@ char *seconds2duration(uint32_t seconds)
   }
   else
   {
-    sniprintf(buffer, 20, "%lu", seconds);
+    sniprintf(buffer, 20, "%lus", seconds);
   }
   return buffer;
 }
