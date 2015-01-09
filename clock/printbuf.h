@@ -1,6 +1,8 @@
 #ifndef _PRINTBUF_H
 #define _PRINTBUF_H
 
+#include <stdarg.h>
+
 #define PRINT_BUFFER_SIZE 128
 
 #define DEBUG_LEVEL_1 1
@@ -19,41 +21,26 @@
 # define DEBUG_OUTPUT DEBUG_OUTPUT_BT
 #endif
 
-extern char _printbuf[PRINT_BUFFER_SIZE];
-
-#define printbt(...) { \
-  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
-  Serial1.print(_printbuf); \
-}
-
 #if NIXIE_DEBUG >= DEBUG_LEVEL_1
-# define dbg1(...) { \
-  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
-  DEBUG_OUTPUT.print("dbg1: "); \
-  DEBUG_OUTPUT.println(_printbuf); \
-}
+# define dbg1(...) dbg(1, __VA_ARGS__)
 #else
 # define dbg1(...) ;
 #endif
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_2
-# define dbg2(...) { \
-  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
-  DEBUG_OUTPUT.print("dbg2: "); \
-  DEBUG_OUTPUT.println(_printbuf); \
-}
+# define dbg2(...) dbg(2, __VA_ARGS__)
 #else
 # define dbg2(...) ;
 #endif
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_3
-# define dbg3(...) { \
-  sniprintf(_printbuf, PRINT_BUFFER_SIZE, __VA_ARGS__); \
-  DEBUG_OUTPUT.print("dbg3: "); \
-  DEBUG_OUTPUT.println(_printbuf); \
-}
+# define dbg3(...) dbg(3, __VA_ARGS__)
 #else
 # define dbg3(...) ;
 #endif
+
+char *printbuf(const char *format, ...);
+char *printbufva(const char *format, va_list args);
+void dbg(int level, const char *format, ...);
 
 #endif

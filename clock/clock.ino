@@ -97,7 +97,7 @@ void loop()
   
   if (cfg.show_time && lastTime != RTC_TSR)
   {
-    printbt("%lu\n", RTC_TSR);
+    Serial1.println(RTC_TSR);
     lastTime = RTC_TSR;
   }
   if (lastEnd >= nextFpsMark)
@@ -105,7 +105,7 @@ void loop()
     uptime++;
     if (cfg.show_fps)
     {
-      printbt("uptime=%lu, fps=%d\n", uptime, fps);
+      Serial1.print( printbuf("uptime=%lu, fps=%d\n", uptime, fps) );
     }
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
@@ -280,9 +280,9 @@ void handleSerial(char const* buffer, int len)
       gmtime_static(&tm_target, &cfg.newyear_target);
     }
     cfg.generator = &generator_newyear;
-    printbt("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    Serial1.print( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
-      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec);
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if (*buffer == 'R' && len == 1)
   {
@@ -331,28 +331,16 @@ void handleSerial(char const* buffer, int len)
       gmtime_static(&tm_target, &newTime);
     }
     rtc_set(newTime);
-    Serial1.print("Time set to timestamp=");
-    Serial1.println(newTime);
     gmtime_static(&tm_target, &newTime);
-    Serial1.print(tm_target.tm_mday, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target.tm_mon+1, DEC);
-    Serial1.print("/");
-    Serial1.print(tm_target.tm_year+1900, DEC);
-    Serial1.print(" ");
-    Serial1.print(tm_target.tm_hour, DEC);
-    Serial1.print(":");
-    Serial1.print(tm_target.tm_min, DEC);
-    Serial1.print(":");
-    Serial1.println(tm_target.tm_sec, DEC);
+    Serial1.print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
+      newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if(*buffer == 'W' && len == 5)
   {
     buffer++;
     uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
-    Serial1.print("Countdown for ");
-    Serial1.print(countdown_seconds, DEC);
-    Serial1.println(" seconds");
+    Serial1.print( printbuf("Countdown for %d seconds\n", countdown_seconds) );
     // FIXME: millis() reset not taken into account. tocheck also : uint32 overflow
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
@@ -363,10 +351,8 @@ void handleSerial(char const* buffer, int len)
     Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
     Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
     Serial1.println("Compiler version " __VERSION__ );
-    printbt("Uptime is %s (%lu seconds)\n", seconds2duration(uptime), uptime);
-    Serial1.print("Teensy core is running at ");
-    Serial1.print(F_CPU / 1000000, DEC);
-    Serial1.println(" MHz");
+    Serial1.println( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
+    Serial1.print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
   }
   else if (len > 0)
   {

@@ -33,6 +33,8 @@ ARDUINO_PATH=required
 RTC_COMPENSATE=0
 NIXIE_DEBUG=1
 
+savedargs="$@"
+
 if [ -n "$1" ] ; then
 	TEMP=`getopt -o f:t:p:r:d: -l frequency:,teensy-version:,arduino-path:,rtc-compensate:,debug: -n configure -- "$@"`
 	if [ $? != 0 ] ; then echo "configure: aborting..." >&2 ; exit 1 ; fi
@@ -119,7 +121,8 @@ else
 	exit 1
 fi
 
-cp $TEMPLATE $TARGET
+echo "# cmd used: $0 $savedargs" > $TARGET
+cat $TEMPLATE >> $TARGET
 sed -i -re "s%#TEENSY_VERSION#%$TEENSY_VERSION%g" $TARGET
 sed -i -re "s%#FREQUENCY#%$FREQUENCY%g" $TARGET
 sed -i -re "s%#ARDUINO_PATH#%$ARDUINO_PATH%g" $TARGET
