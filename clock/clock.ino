@@ -6,7 +6,6 @@
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
-#include "gmtime_static.h"
 
 #define WANT_FADING
 
@@ -277,7 +276,7 @@ void handleSerial(char const* buffer, int len)
     else
     {
       cfg.newyear_target = getTimestampFromString(buffer, 10);
-      gmtime_static(&tm_target, &cfg.newyear_target);
+      gmtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
     Serial1.print( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
@@ -328,10 +327,10 @@ void handleSerial(char const* buffer, int len)
     else
     {
       newTime = getTimestampFromString(buffer, 10);
-      gmtime_static(&tm_target, &newTime);
+      gmtime_r(&newTime, &tm_target);
     }
     rtc_set(newTime);
-    gmtime_static(&tm_target, &newTime);
+    gmtime_r(&newTime, &tm_target);
     Serial1.print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
