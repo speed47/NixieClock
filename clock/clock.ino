@@ -44,7 +44,8 @@ int serialBufferLen = 0;
 void setup()
 {
   // Init BT Serial
-  Serial1.begin(115200, SERIAL_8N1);
+  serial_begin(BAUD2DIV(115200));
+  serial_format(SERIAL_8N1);
 
 #ifdef RTC_COMPENSATE
   // compensate RTC
@@ -96,7 +97,7 @@ void loop()
   
   if (cfg.show_time && lastTime != RTC_TSR)
   {
-    Serial1.println(RTC_TSR);
+    serial_print( printbuf("%lu\n", RTC_TSR) );
     lastTime = RTC_TSR;
   }
   if (lastEnd >= nextFpsMark)
@@ -104,7 +105,7 @@ void loop()
     uptime++;
     if (cfg.show_fps)
     {
-      Serial1.print( printbuf("uptime=%lu, fps=%d\n", uptime, fps) );
+      serial_print( printbuf("uptime=%lu, fps=%d\n", uptime, fps) );
     }
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
@@ -129,10 +130,10 @@ void loop()
     // Wait until 1000µs => 7.5% blanking time, handle serial buffer during this time
     while(micros() - lastEnd < 1000)
     {
-      if(Serial1.available())
+      if(serial_available())
       {
-        unsigned char c = Serial1.read();
-        Serial.print(c);
+        unsigned char c = serial_getchar();
+        //Serial.print(c);
         if(c == '\r' || c == '\n')
         {
           serialBuffer[serialBufferLen] = '\0';
@@ -251,17 +252,17 @@ void handleSerial(char const* buffer, int len)
   else if(*buffer == 'C' && len == 1)
   {
     cfg.generator = &generator_clock;
-    Serial1.println("mode set to CLOCK");
+    serial_print("mode set to CLOCK\n");
   }
   else if(*buffer == 'O' && len == 1)
   {
     cfg.generator = &generator_counter;
-    Serial1.println("mode set to COUNTER");
+    serial_print("mode set to COUNTER\n");
   }
   else if (*buffer == 'B' && len == 1)
   {
     cfg.generator = &generator_birthday;
-    Serial1.println("mode set to BIRTHDAY");
+    serial_print("mode set to BIRTHDAY\n");
   }
   else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
@@ -279,26 +280,24 @@ void handleSerial(char const* buffer, int len)
       gmtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
-    Serial1.print( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    serial_print( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if (*buffer == 'R' && len == 1)
   {
     cfg.want_transition_now = 1;
-    Serial1.println("Asked for a new transition... NOW!");
+    serial_print("Asked for a new transition... NOW!\n");
   }
   else if (*buffer == 'F' && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
-    Serial1.print("Show FPS mode is ");
-    Serial1.println(cfg.show_fps ? "ON" : "OFF");
+    serial_print( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
   }
   else if (*buffer == 'M' && len == 1)
   {
     cfg.show_time = !cfg.show_time;
-    Serial1.print("Show TIME mode is ");
-    Serial1.println(cfg.show_time ? "ON" : "OFF");
+    serial_print( printbuf("Show TIME mode is %s\n", cfg.show_time ? "ON" : "OFF") );
   }
   else if(*buffer == 'T' && len == 7)
   {
@@ -311,7 +310,7 @@ void handleSerial(char const* buffer, int len)
       buffer += 2;
     }
     rtc_set(newTime);
-    Serial1.println("Time set");
+    serial_print("Time set\n");
   }
   else if (*buffer == 'D' && (len == 12 || len == 13))
   {
@@ -331,7 +330,7 @@ void handleSerial(char const* buffer, int len)
     }
     rtc_set(newTime);
     gmtime_r(&newTime, &tm_target);
-    Serial1.print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    serial_print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
@@ -339,33 +338,32 @@ void handleSerial(char const* buffer, int len)
   {
     buffer++;
     uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
-    Serial1.print( printbuf("Countdown for %d seconds\n", countdown_seconds) );
+    serial_print( printbuf("Countdown for %d seconds\n", countdown_seconds) );
     // FIXME: millis() reset not taken into account. tocheck also : uint32 overflow
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
   }
   else if (*buffer == 'i' && len == 1)
   {
-    Serial1.println();
-    Serial1.println("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) );
-    Serial1.println("Built on " EXPAND2STR(BUILD_TIME) );
-    Serial1.println("Compiler version " __VERSION__ );
-    Serial1.println( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
-    Serial1.print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
+    serial_print("\n");
+    serial_print("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
+    serial_print("Built on " EXPAND2STR(BUILD_TIME) "\n");
+    serial_print("Compiler version " __VERSION__ "\n");
+    serial_print( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
+    serial_print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
   }
   else if (len > 0)
   {
-    Serial1.println();
-    Serial1.print("Unknown cmd <");
-    Serial1.print(buffer);
-    Serial1.println(">. Supported cmds are:");
-    Serial1.println("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS");
-    Serial1.println("Toggle options: show [F]ps, show ti[M]e");
-    Serial1.println("Actions: force t[R]ansition now, show build [I]nfo");
-    Serial1.println("Simple modes: [B]irthday, [C]lock, c[O]unter");
-    Serial1.println("Complex modes:");
-    Serial1.println("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS");
-    Serial1.println("- countdown: [W]MMSS, e.g. D9000 for 90 minutes");
+    serial_print("\nUnknown cmd <");
+    serial_print(buffer);
+    serial_print(">. Supported cmds are:\n");
+    serial_print("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n");
+    serial_print("Toggle options: show [F]ps, show ti[M]e\n");
+    serial_print("Actions: force t[R]ansition now, show build [I]nfo\n");
+    serial_print("Simple modes: [B]irthday, [C]lock, c[O]unter\n");
+    serial_print("Complex modes:\n");
+    serial_print("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\n");
+    serial_print("- countdown: [W]MMSS, e.g. D9000 for 90 minutes\n");
     // TODO: be able to change debug mode on the fly
   }
 }

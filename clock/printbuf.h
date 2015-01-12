@@ -14,13 +14,6 @@
 # define NIXIE_DEBUG DEBUG_LEVEL_1
 #endif
 
-#define DEBUG_OUTPUT_BT Serial1
-#define DEBUG_OUTPUT_USB Serial
-
-#ifndef DEBUG_OUTPUT
-# define DEBUG_OUTPUT DEBUG_OUTPUT_BT
-#endif
-
 #if NIXIE_DEBUG >= DEBUG_LEVEL_1
 # define dbg1(...) dbg(1, __VA_ARGS__)
 #else

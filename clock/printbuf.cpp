@@ -29,9 +29,9 @@ void dbg(int level, const char *format, ...)
 {
   va_list args;
 
-  DEBUG_OUTPUT.print( printbuf("[%lu.%03d] dbg%d: ", RTC_TSR, RTC_TPR/32768, level) );
+  serial_print( printbuf("[%lu.%03d] dbg%d: ", RTC_TSR, RTC_TPR/32768, level) );
   va_start(args, format);
-  DEBUG_OUTPUT.println( printbufva(format, args) );
+  serial_print( printbufva(format, args) );
   va_end(args);
 }
 
