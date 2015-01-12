@@ -2,6 +2,7 @@
 #define _GLOBALS_H
 
 #include <stdint.h>
+#include <time.h>
 
 #ifndef GIT_REVISION
 # define GIT_REVISION none
@@ -9,7 +10,7 @@
 #ifndef GIT_DIRTY
 # define GIT_DIRTY unknown
 #endif
-#if !defined(BUILD_TIME) and defined(TIME_T)
+#if !defined(BUILD_TIME) && defined(TIME_T)
 # define BUILD_TIME TIME_T
 #endif
 
@@ -44,7 +45,7 @@ typedef struct
   // config for generator_newyear:
   time_t newyear_target;
   // config for generator_clock:
-  dotMode dot_mode;
+  enum dotMode dot_mode;
   int want_transition_now;
   // other stuff
   int show_fps; 

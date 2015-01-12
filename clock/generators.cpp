@@ -4,7 +4,7 @@
 #include "printbuf.h"
 
 // helper functions
-void splitTimeToFramebuffer(unsigned long time, splitMode split_mode)
+void splitTimeToFramebuffer(unsigned long time, enum splitMode split_mode)
 {
   if (split_mode == SPLIT_SEC_TO_HOUR_MIN_SEC)
   {
@@ -137,7 +137,7 @@ void generator_clock()
     transition_step = 1;
   }
 
-  if (frameBuffer.digits[5] == 2 and frameBuffer.digits[4] == 5 and frameBuffer.digits[3] % 5 == 4 and transition_step == 0)
+  if (frameBuffer.digits[5] == 2 && frameBuffer.digits[4] == 5 && frameBuffer.digits[3] % 5 == 4 && transition_step == 0)
   {
     transition_step = 1;
   }
@@ -157,7 +157,7 @@ void generator_clock()
       dbg2("transition step 1 => 2");
       transition_step = 2;
     }
-    else if (transition_step >= 2 and transition_step <= 9)
+    else if (transition_step >= 2 && transition_step <= 9)
     {
       if (currentTime != lastTime)
       {
