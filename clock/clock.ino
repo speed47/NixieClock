@@ -371,7 +371,7 @@ void handleSerial(char const* buffer, int len)
       {
         value *= 10;
         value += *buffer - '0';
-        len--;
+        buffer++; len--;
       }
       else
       {
