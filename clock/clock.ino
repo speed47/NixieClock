@@ -242,6 +242,38 @@ void getTmFromString(struct tm* tm, char const* buffer)
   tm->tm_min  = (buffer[8]  - '0') * 10 + (buffer[9]  - '0');
   tm->tm_sec  = (buffer[10] - '0') * 10 + (buffer[11] - '0');
 }
+
+int readInt(const char* buffer, int *result)
+{
+  int sign = 1;
+  if (*buffer == '-')
+  {
+    sign = -1;
+    buffer++;
+  } 
+  else if (*buffer == '+')
+  {
+    buffer++;
+  }
+
+  int value = 0;
+  while (*buffer != '\0')
+  {
+    if (*buffer >= '0' && *buffer <= '9')
+    {
+      value *= 10;
+      value += *buffer - '0';
+    }
+    else
+    {
+      return 0;
+    }
+    buffer++;
+  }
+
+  *result = value * sign;
+  return 1;
+}
   
 // serialHandler
 inline
@@ -358,7 +390,7 @@ void handleSerial(char const* buffer, int len)
   {
     buffer++;
     int value;
-    if (siscanf(buffer, "%d", &value) == 1)
+    if (readInt(buffer, &value) == 1)
     {
       serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
       cfg.rtc_compensate = value;
