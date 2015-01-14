@@ -357,19 +357,36 @@ void handleSerial(char const* buffer, int len)
   else if (*buffer == 'R' && len > 1)
   {
     buffer++; len--;
-    int mult = (*buffer == '-' ? -1 : 1);
-    buffer++; len--;
+    int mult = 1;
+    if (*buffer == '-')
+    {
+      mult = -1;
+      buffer++; len--;
+    }
     int value = 0;
+    int ok = 1;
     while (*buffer != '\0' && len > 0)
     {
-      value *= 10;
-      value += *buffer - '0';
-      len--;
+      if (*buffer >= '0' && *buffer <= '9')
+      {
+        value *= 10;
+        value += *buffer - '0';
+        len--;
+      }
+      else
+      {
+        ok = 0;
+        serial_print( printbuf("invalid character chr(%d)\n", *buffer));
+        break;
+      }
     }
-    value *= mult;
-    serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
-    cfg.rtc_compensate = value;
-    rtc_compensate(value);
+    if (ok)
+    {
+      value *= mult;
+      serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
+      cfg.rtc_compensate = value;
+      rtc_compensate(value);
+    }
   }
   else if (len > 0)
   {
