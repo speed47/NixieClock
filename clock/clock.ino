@@ -356,36 +356,17 @@ void handleSerial(char const* buffer, int len)
   }
   else if (*buffer == 'R' && len > 1)
   {
-    buffer++; len--;
-    int mult = 1;
-    if (*buffer == '-')
+    buffer++;
+    int value;
+    if (siscanf(buffer, "%d", &value) == 1)
     {
-      mult = -1;
-      buffer++; len--;
-    }
-    int value = 0;
-    int ok = 1;
-    while (*buffer != '\0' && len > 0)
-    {
-      if (*buffer >= '0' && *buffer <= '9')
-      {
-        value *= 10;
-        value += *buffer - '0';
-        buffer++; len--;
-      }
-      else
-      {
-        ok = 0;
-        serial_print( printbuf("invalid character chr(%d)\n", *buffer));
-        break;
-      }
-    }
-    if (ok)
-    {
-      value *= mult;
       serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
       cfg.rtc_compensate = value;
       rtc_compensate(value);
+    }
+    else
+    {
+      serial_print("parsing error\n");
     }
   }
   else if (len > 0)
