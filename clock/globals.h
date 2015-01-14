@@ -40,6 +40,8 @@ typedef struct
 {
   // pointer to the generator function that will be used
   void (*generator)(void);
+  // configurable rtc drift correction
+  int rtc_compensate;
   // config for generator_countdown:
   uint32_t countdown_target_millis;
   // config for generator_newyear:

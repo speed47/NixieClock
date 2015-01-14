@@ -30,6 +30,7 @@ frameBuffer_t frameBuffer;
 char _printbuf[PRINT_BUFFER_SIZE];
 config_t cfg = {
   .generator = &generator_clock,
+  .rtc_compensate = 0,
   .countdown_target_millis = 0,
   .newyear_target = 0,
   .dot_mode = DOT_MODE_CHASE,
@@ -49,6 +50,7 @@ void setup()
 
 #ifdef RTC_COMPENSATE
   // compensate RTC
+  cfg.rtc_compensate = RTC_COMPENSATE;
   rtc_compensate(RTC_COMPENSATE);
   dbg1("starting up, rtc_compensate is %d", RTC_COMPENSATE);
 #else
@@ -345,25 +347,43 @@ void handleSerial(char const* buffer, int len)
   }
   else if (*buffer == 'i' && len == 1)
   {
-    serial_print("\n");
-    serial_print("NixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
+    serial_print("\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
     serial_print("Built on " EXPAND2STR(BUILD_TIME) "\n");
-    serial_print("Compiler version " __VERSION__ "\n");
+    serial_print("With compiler version " __VERSION__ "\n");
+    serial_print( printbuf("Current RTC compensation value is %d\n", cfg.rtc_compensate) );
     serial_print( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
     serial_print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
+  }
+  else if (*buffer == 'R' && len > 1)
+  {
+    buffer++; len--;
+    int mult = (*buffer == '-' ? -1 : 1);
+    buffer++; len--;
+    int value = 0;
+    while (*buffer != '\0' && len > 0)
+    {
+      value *= 10;
+      value += *buffer - '0';
+      len--;
+    }
+    value *= mult;
+    serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
+    cfg.rtc_compensate = value;
+    rtc_compensate(value);
   }
   else if (len > 0)
   {
     serial_print("\nUnknown cmd <");
     serial_print(buffer);
-    serial_print(">. Supported cmds are:\n");
-    serial_print("Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n");
-    serial_print("Toggle options: show [F]ps, show ti[M]e\n");
-    serial_print("Actions: force t[R]ansition now, show build [I]nfo\n");
-    serial_print("Simple modes: [B]irthday, [C]lock, c[O]unter\n");
-    serial_print("Complex modes:\n");
-    serial_print("- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\n");
-    serial_print("- countdown: [W]MMSS, e.g. D9000 for 90 minutes\n");
+    serial_print(">. Supported cmds are:\n"
+                 "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n"
+                 "Set RTC compensation: [R]<value>\n"
+                 "Toggle options: show [F]ps, show ti[M]e\n"
+                 "Actions: force t[R]ansition now, show build [I]nfo\n"
+                 "Simple modes: [B]irthday, [C]lock, c[O]unter\n"
+                 "Complex modes:\n"
+                 "- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\n"
+                 "- countdown: [W]MMSS, e.g. D9000 for 90 minutes\n");
     // TODO: be able to change debug mode on the fly
   }
 }
