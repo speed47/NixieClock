@@ -42,6 +42,10 @@ config_t cfg = {
 char serialBuffer[SERIAL_BUFFER_SIZE];
 int serialBufferLen = 0;
 
+// redefine this to avoid inclusion of a lot of teensy
+// files we don't need
+void yield(void) {}
+
 void setup()
 {
   // Init BT Serial
