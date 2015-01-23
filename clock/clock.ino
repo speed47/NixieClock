@@ -56,10 +56,36 @@ void setup()
   // compensate RTC
   cfg.rtc_compensate = RTC_COMPENSATE;
   rtc_compensate(RTC_COMPENSATE);
-  dbg1("starting up, rtc_compensate is %d", RTC_COMPENSATE);
-#else
-  dbg1("starting up");
 #endif
+
+  // Show last reset reason
+  uint16_t resetReasonHw = RCM_SRS0;
+  resetReasonHw |= (RCM_SRS1<<8);
+  uint16_t mask = 1;
+  serial_print("starting up, last reset reason:");
+  do
+  {
+    switch (mask & resetReasonHw)
+    {
+      //RCM_SRS0
+      case 0x0001: serial_print(" WakeUp"); break;
+      case 0x0002: serial_print(" LowVoltage");  break;
+      case 0x0004: serial_print(" LossOfClock"); break;
+      case 0x0008: serial_print(" LossOfLock"); break;
+      //case 0x0010 reserved
+      case 0x0020: serial_print(" Watchdog"); break;
+      case 0x0040: serial_print(" ExtResetPin"); break;
+      case 0x0080: serial_print(" PowerOn"); break;
+      //RCM_SRS1
+      case 0x0100: serial_print(" JTAG"); break;
+      case 0x0200: serial_print(" CoreLockup"); break;
+      case 0x0400: serial_print(" Software"); break;
+      case 0x0800: serial_print(" MDM_AP"); break;
+      case 0x1000: serial_print(" EZPT"); break;
+      case 0x2000: serial_print(" SACKERR"); break;
+    }
+  } while (mask <<= 1);
+  serial_print("\n");
 
   // Set PORTD as output
   pinMode(2, OUTPUT);
@@ -326,7 +352,7 @@ void handleSerial(char const* buffer, int len)
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
-  else if ((*buffer == 'r' || *buffer == 'R') && len == 1)
+  else if ((*buffer == 'r' ||*buffer == 'R') && len == 1)
   {
     cfg.want_transition_now = 1;
     serial_print("Asked for a new transition... NOW!\n");
@@ -336,7 +362,7 @@ void handleSerial(char const* buffer, int len)
     cfg.show_fps = !cfg.show_fps;
     serial_print( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
   }
-  else if ((*buffer == 'm' || *buffer == 'M') && len == 1)
+  else if ((*buffer == 'm' ||*buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
     serial_print( printbuf("Show TIME mode is %s\n", cfg.show_time ? "ON" : "OFF") );
@@ -354,7 +380,7 @@ void handleSerial(char const* buffer, int len)
     rtc_set(newTime);
     serial_print("Time set\n");
   }
-  else if ((*buffer == 'd' || *buffer == 'D') && (len == 12 || len == 13))
+  else if ((*buffer == 'd' ||*buffer == 'D') && (len == 12 || len == 13))
   {
     buffer++;
     struct tm tm_target;
@@ -385,7 +411,7 @@ void handleSerial(char const* buffer, int len)
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
   }
-  else if ((*buffer == 'i' || *buffer == 'I')  && len == 1)
+  else if ((*buffer == 'i' ||*buffer == 'I')  && len == 1)
   {
     serial_print("\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
     serial_print("Built on " EXPAND2STR(BUILD_TIME) "\n");
