@@ -309,11 +309,20 @@ int readInt(const char* buffer, int *result)
 inline
 void handleSerial(char const* buffer, int len)
 {
+  // ignore the 4 BT-182 result codes for now
   if (strncmp(buffer, "ERROR", 5) == 0)
   {
     ;
   }
   else if (strncmp(buffer, "CONNECT", 7) == 0)
+  {
+    ;
+  }
+  else if (strncmp(buffer, "DISCONNECT", 10) == 0)
+  {
+    ;
+  }
+  else if (strncmp(buffer, "OK", 2) == 0)
   {
     ;
   }
