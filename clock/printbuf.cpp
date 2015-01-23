@@ -1,4 +1,5 @@
 #include "printbuf.h"
+#include "globals.h"
 #include <stdio.h>
 #include <kinetis.h>
 #include <HardwareSerial.h>
@@ -18,15 +19,21 @@ char *printbuf(const char *format, ...)
   return _print_buffer;
 }
 
-// same as printbuf() but with already initialized va_list (used by dbg* funcs)
+// same as printbuf() but with already initialized va_list (used by dbg() func below)
 char *printbufva(const char *format, va_list args)
 {
   vsniprintf(_print_buffer, PRINT_BUFFER_SIZE, format, args);
   return _print_buffer;
 }
 
+// also see dbg1/dbg2/dbg3 macros
 void dbg(int level, const char *format, ...)
 {
+  // if currently configured debug level is below this message debug level, skip it
+  if (cfg.debug_level < level)
+  {
+    return;
+  }
   va_list args;
 
   serial_print( printbuf("[%lu.%02d] dbg%d: ", RTC_TSR, RTC_TPR*100/32768, level) );

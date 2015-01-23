@@ -42,6 +42,7 @@ extern frameBuffer_t frameBuffer;
 
 typedef struct
 {
+  int debug_level;
   // pointer to the generator function that will be used
   void (*generator)(void);
   // configurable rtc drift correction

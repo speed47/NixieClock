@@ -11,7 +11,7 @@
 
 // should be defined via ./configure, but if not, here is a default
 #ifndef NIXIE_DEBUG
-# define NIXIE_DEBUG DEBUG_LEVEL_1
+# define NIXIE_DEBUG DEBUG_LEVEL_3
 #endif
 
 #if NIXIE_DEBUG >= DEBUG_LEVEL_1

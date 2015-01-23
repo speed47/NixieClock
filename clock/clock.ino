@@ -29,6 +29,7 @@ uint32_t uptime = 0;
 frameBuffer_t frameBuffer;
 char _printbuf[PRINT_BUFFER_SIZE];
 config_t cfg = {
+  .debug_level = NIXIE_DEBUG,
   .generator = &generator_clock,
   .rtc_compensate = 0,
   .countdown_target_millis = 0,
@@ -449,6 +450,24 @@ void handleSerial(char const* buffer, int len)
     CPU_RESTART; // soft reset
     delay(1000); // justin case
     serial_print("BUG: reboot failed!?\n"); // never reached
+  }
+  else if ((*buffer == 'g' || *buffer == 'G') && len == 2)
+  {
+    buffer++;
+    int value = *buffer - '0';
+    if (value < 0 || value > 3)
+    {
+      serial_print( printbuf("Invalid value %d, expected one of 0 1 2 3\n", value) );
+    }
+    else if (value > NIXIE_DEBUG)
+    {
+      serial_print( printbuf("Can't set debug value to %d, maximum compiled-in value is %d\n", value, NIXIE_DEBUG) );
+    }
+    else
+    {
+      serial_print( printbuf("Debug level changed from %d to %d\n", cfg.debug_level, value) );
+      cfg.debug_level = value;
+    }
   }
   else if (len > 0)
   {
