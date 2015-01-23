@@ -17,6 +17,10 @@
 #define _EXPAND2STR(str) #str
 #define EXPAND2STR(str) _EXPAND2STR(str)
 
+#define CPU_RESTART_ADDR (uint32_t *)0xE000ED0C
+#define CPU_RESTART_VAL 0x5FA0004
+#define CPU_RESTART (*CPU_RESTART_ADDR = CPU_RESTART_VAL);
+
 typedef struct 
 {
   uint8_t digits[6];

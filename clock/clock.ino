@@ -283,21 +283,25 @@ int readInt(const char* buffer, int *result)
 inline
 void handleSerial(char const* buffer, int len)
 {
-  if(strncmp(buffer, "ERROR", 5) == 0)
+  if (strncmp(buffer, "ERROR", 5) == 0)
   {
-    ;//dbg1("BT: ignoring 'error' message");
+    ;
   }
-  else if(*buffer == 'C' && len == 1)
+  else if (strncmp(buffer, "CONNECT", 7) == 0)
+  {
+    ;
+  }
+  else if ((*buffer == 'c' || *buffer == 'C') && len == 1)
   {
     cfg.generator = &generator_clock;
     serial_print("mode set to CLOCK\n");
   }
-  else if(*buffer == 'O' && len == 1)
+  else if ((*buffer == 'o' || *buffer == 'O') && len == 1)
   {
     cfg.generator = &generator_counter;
     serial_print("mode set to COUNTER\n");
   }
-  else if (*buffer == 'B' && len == 1)
+  else if ((*buffer == 'b' || *buffer == 'B') && len == 1)
   {
     cfg.generator = &generator_birthday;
     serial_print("mode set to BIRTHDAY\n");
@@ -322,22 +326,22 @@ void handleSerial(char const* buffer, int len)
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
-  else if (*buffer == 'R' && len == 1)
+  else if ((*buffer == 'r' || *buffer == 'R') && len == 1)
   {
     cfg.want_transition_now = 1;
     serial_print("Asked for a new transition... NOW!\n");
   }
-  else if (*buffer == 'F' && len == 1)
+  else if ((*buffer == 'f' || *buffer == 'F') && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
     serial_print( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
   }
-  else if (*buffer == 'M' && len == 1)
+  else if ((*buffer == 'm' || *buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
     serial_print( printbuf("Show TIME mode is %s\n", cfg.show_time ? "ON" : "OFF") );
   }
-  else if(*buffer == 'T' && len == 7)
+  else if ((*buffer == 't' || *buffer == 'T') && len == 7)
   {
     buffer++;
     uint32_t newTime = 0;
@@ -350,7 +354,7 @@ void handleSerial(char const* buffer, int len)
     rtc_set(newTime);
     serial_print("Time set\n");
   }
-  else if (*buffer == 'D' && (len == 12 || len == 13))
+  else if ((*buffer == 'd' || *buffer == 'D') && (len == 12 || len == 13))
   {
     buffer++;
     struct tm tm_target;
@@ -372,7 +376,7 @@ void handleSerial(char const* buffer, int len)
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
-  else if(*buffer == 'W' && len == 5)
+  else if ((*buffer == 'w' || *buffer == 'W') && len == 5)
   {
     buffer++;
     uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
@@ -381,7 +385,7 @@ void handleSerial(char const* buffer, int len)
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
   }
-  else if (*buffer == 'i' && len == 1)
+  else if ((*buffer == 'i' || *buffer == 'I')  && len == 1)
   {
     serial_print("\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
     serial_print("Built on " EXPAND2STR(BUILD_TIME) "\n");
@@ -390,7 +394,7 @@ void handleSerial(char const* buffer, int len)
     serial_print( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
     serial_print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
   }
-  else if (*buffer == 'R' && len > 1)
+  else if ((*buffer == 'r' || *buffer == 'R') && len > 1)
   {
     buffer++;
     int value;
@@ -405,6 +409,12 @@ void handleSerial(char const* buffer, int len)
       serial_print("parsing error\n");
     }
   }
+  else if ((*buffer == 'e' || *buffer == 'E') && len == 1)
+  {
+    CPU_RESTART; // soft reset
+    delay(1000); // justin case
+    serial_print("BUG: reboot failed!?\n"); // never reached
+  }
   else if (len > 0)
   {
     serial_print("\nUnknown cmd <");
@@ -413,7 +423,7 @@ void handleSerial(char const* buffer, int len)
                  "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n"
                  "Set RTC compensation: [R]<value>\n"
                  "Toggle options: show [F]ps, show ti[M]e\n"
-                 "Actions: force t[R]ansition now, show build [I]nfo\n"
+                 "Actions: force t[R]ansition now, show build [I]nfo, r[E]boot\n"
                  "Simple modes: [B]irthday, [C]lock, c[O]unter\n"
                  "Complex modes:\n"
                  "- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\n"
