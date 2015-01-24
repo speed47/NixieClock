@@ -7,8 +7,6 @@
 #include "ws2811.h"
 #include "generators.h"
 
-#define WANT_FADING
-
 /* Configuration pins */
 
 const int dot1Pin = 3;
@@ -35,6 +33,7 @@ config_t cfg = {
   .countdown_target_millis = 0,
   .newyear_target = 0,
   .dot_mode = DOT_MODE_CHASE,
+  .fading = 1,
   .want_transition_now = 0,
   .show_fps = 0,
   .show_time = 0,
@@ -372,6 +371,11 @@ void handleSerial(char const* buffer, int len)
     cfg.show_fps = !cfg.show_fps;
     serial_print( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
   }
+  else if ((*buffer == 'a' || *buffer == 'A') && len == 1)
+  {
+    cfg.fading = !cfg.fading;
+    serial_print( printbuf("Clock fading mode is %s\n", cfg.fading ? "ON" : "OFF") );
+  }
   else if ((*buffer == 'm' ||*buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
@@ -476,7 +480,7 @@ void handleSerial(char const* buffer, int len)
     serial_print(">. Supported cmds are:\n"
                  "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n"
                  "Set RTC compensation: [R]<value>\n"
-                 "Toggle options: show [F]ps, show ti[M]e\n"
+                 "Toggle options: show [F]ps, show ti[M]e, f[A]ding\n"
                  "Actions: force t[R]ansition now, show build [I]nfo, r[E]boot\n"
                  "Simple modes: [B]irthday, [C]lock, c[O]unter\n"
                  "Complex modes:\n"

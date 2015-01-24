@@ -56,31 +56,37 @@ void generator_clock()
   unsigned int currentTime = getTime(); // might be modified +/- 1 by fading algo
   unsigned int currentTimeReal = currentTime; // we need the real unmodified currentTime later (at least for some dot modes)
   
-  #ifdef WANT_FADING
-  /* During 250ms display progressive change between numbers */
-  /* TODO: need more testing */
-  // 125ms after change
-  if(RTC_TPR < 4096)
+  if (cfg.fading)
   {
-    // 50 => 100%
-    uint8_t percent = 4 + ((4 * RTC_TPR) / 4096);
-    if((frame%8) < percent)
+    /* During 250ms display progressive change between numbers */
+    /* TODO: need more testing */
+    // 125ms after change
+    if(RTC_TPR < 4096)
     {
-      currentTime = getTime();
+      // 50 => 100%
+      uint8_t percent = 4 + ((4 * RTC_TPR) / 4096);
+      if((frame%8) < percent)
+      {
+        currentTime = getTime();
+      }
+      else
+      {
+        currentTime = getTime() - 1;
+      }
     }
-    else
+    // 250ms before change
+    else if(RTC_TPR > 28672)
     {
-      currentTime = getTime() - 1;
-    }
-  }
-  // 250ms before change
-  else if(RTC_TPR > 28672)
-  {
-    // 0 => 50%
-    uint8_t percent = (4 * (RTC_TPR-28672)) / 4096;
-    if((frame%8) < percent)
-    {
-      currentTime = getTime()+1;
+      // 0 => 50%
+      uint8_t percent = (4 * (RTC_TPR-28672)) / 4096;
+      if((frame%8) < percent)
+      {
+        currentTime = getTime()+1;
+      }
+      else
+      {
+        currentTime = getTime();
+      }
     }
     else
     {
@@ -91,9 +97,6 @@ void generator_clock()
   {
     currentTime = getTime();
   }
-  #else
-  currentTime = getTime();
-  #endif
 
   /* UPDATE DOTS */
   if (cfg.dot_mode == DOT_MODE_CHASE)

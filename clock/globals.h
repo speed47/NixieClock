@@ -53,6 +53,7 @@ typedef struct
   time_t newyear_target;
   // config for generator_clock:
   enum dotMode dot_mode;
+  int fading;
   int want_transition_now;
   // other stuff
   int show_fps; 
