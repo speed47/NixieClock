@@ -41,11 +41,6 @@ void splitTimeToFramebuffer(unsigned long time, enum splitMode split_mode)
   }
 }
 
-unsigned int getTime()
-{
-  return RTC_TSR;
-}
-
 // Generator functions
 void generator_clock()
 {
@@ -53,7 +48,7 @@ void generator_clock()
   frame++;
   
   // Get Current Time
-  unsigned int currentTime = getTime(); // might be modified +/- 1 by fading algo
+  unsigned int currentTime = rtc_get(); // might be modified +/- 1 by fading algo
   unsigned int currentTimeReal = currentTime; // we need the real unmodified currentTime later (at least for some dot modes)
   
   if (cfg.fading)
@@ -67,11 +62,11 @@ void generator_clock()
       uint8_t percent = 4 + ((4 * RTC_TPR) / 4096);
       if((frame%8) < percent)
       {
-        currentTime = getTime();
+        currentTime = rtc_get();
       }
       else
       {
-        currentTime = getTime() - 1;
+        currentTime = rtc_get() - 1;
       }
     }
     // 250ms before change
@@ -81,21 +76,21 @@ void generator_clock()
       uint8_t percent = (4 * (RTC_TPR-28672)) / 4096;
       if((frame%8) < percent)
       {
-        currentTime = getTime()+1;
+        currentTime = rtc_get()+1;
       }
       else
       {
-        currentTime = getTime();
+        currentTime = rtc_get();
       }
     }
     else
     {
-      currentTime = getTime();
+      currentTime = rtc_get();
     }
   }
   else
   {
-    currentTime = getTime();
+    currentTime = rtc_get();
   }
 
   /* UPDATE DOTS */
@@ -147,8 +142,8 @@ void generator_clock()
 
   if (transition_step > 0)
   {
-    static unsigned int lastTime = getTime();
-    currentTime = getTime();
+    static unsigned int lastTime = rtc_get();
+    currentTime = rtc_get();
     /* steps :
     1 => set vars to their init value then set step=2
     2, 3 => casinoize all nixies (2 seconds)
@@ -266,8 +261,8 @@ void generator_newyear()
   frame++;
 
   // config_newyear_target is target timestamp
-  // getTime() is current timestamp
-  int32_t togo_sec = cfg.newyear_target - getTime();
+  // rtc_get() is current timestamp
+  int32_t togo_sec = cfg.newyear_target - rtc_get();
   unsigned int togo_ms = (32768 - RTC_TPR) / (32768 / 1000);
 
   /* Turn dots OFF */

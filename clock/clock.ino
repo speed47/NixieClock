@@ -125,12 +125,12 @@ void loop()
   static uint32_t lastEnd = micros();
   static uint32_t nextFpsMark = lastEnd + 1000*1000;
   static uint16_t fps = 0;
-  static uint32_t lastTime = RTC_TSR;
+  static uint32_t lastTime = rtc_get();
   
-  if (cfg.show_time && lastTime != RTC_TSR)
+  if (cfg.show_time && lastTime != rtc_get())
   {
-    serial_print( printbuf("%lu\n", RTC_TSR) );
-    lastTime = RTC_TSR;
+    lastTime = rtc_get();
+    serial_print( printbuf("%lu\n", lastTime) );
   }
   if (lastEnd >= nextFpsMark)
   {
@@ -384,15 +384,20 @@ void handleSerial(char const* buffer, int len)
   else if ((*buffer == 't' || *buffer == 'T') && len == 7)
   {
     buffer++;
-    uint32_t newTime = 0;
-    for(int i = 0; i < 3; i++)
-    {
-      newTime *= 60;
-      newTime += (buffer[0]-'0') * 10 + (buffer[1]-'0');
-      buffer += 2;
-    }
+    // first; get the current date
+    struct tm tm_target;
+    time_t newTime = rtc_get();
+    gmtime_r(&newTime, &tm_target);
+    // then, change the time part
+    tm_target.tm_hour = (buffer[0]-'0')*10 + (buffer[1]-'0');
+    tm_target.tm_min  = (buffer[2]-'0')*10 + (buffer[3]-'0');
+    tm_target.tm_sec  = (buffer[4]-'0')*10 + (buffer[5]-'0');
+    // convert that back to time_t and set the rtc
+    newTime = mktime(&tm_target);
     rtc_set(newTime);
-    serial_print("Time set\n");
+    serial_print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
+      newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if ((*buffer == 'd' ||*buffer == 'D') && (len == 12 || len == 13))
   {
@@ -481,7 +486,7 @@ void handleSerial(char const* buffer, int len)
                  "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n"
                  "Set RTC compensation: [R]<value>\n"
                  "Toggle options: show [F]ps, show ti[M]e, f[A]ding\n"
-                 "Actions: force t[R]ansition now, show build [I]nfo, r[E]boot\n"
+                 "Actions: t[R]ansition now, [I]nfo, r[E]boot\n"
                  "Simple modes: [B]irthday, [C]lock, c[O]unter\n"
                  "Complex modes:\n"
                  "- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\n"
