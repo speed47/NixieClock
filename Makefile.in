@@ -51,7 +51,14 @@ else
 endif
 
 # path location for Teensy 3 core
-COREPATH = $(ARDUINOPATH)/hardware/teensy/cores/teensy3
+have_avr_in_path = $(wildcard $(ARDUINOPATH)/hardware/teensy/avr/cores/teensy3) 
+ifeq ($(strip $(have_avr_in_path)),)
+  # .. for arduino 1.0.x
+  COREPATH = $(ARDUINOPATH)/hardware/teensy/cores/teensy3
+else
+  # .. for arduino 1.6.x
+  COREPATH = $(ARDUINOPATH)/hardware/teensy/avr/cores/teensy3
+endif
 
 # path location for Arduino libraries
 LIBRARYPATH = libraries
