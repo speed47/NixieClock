@@ -135,7 +135,7 @@ void generator_clock()
     transition_step = 1;
   }
 
-  if ((currentTimeReal + 4) % 300) // multiple of 5min (minus the time it takes for the transition to complete)
+  if ((currentTimeReal + 4) % 300 == 0) // multiple of 5min (minus the time it takes for the transition to complete)
   {
     transition_step = 1;
   }
