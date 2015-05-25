@@ -135,7 +135,7 @@ void generator_clock()
     transition_step = 1;
   }
 
-  if (frameBuffer.digits[5] == 2 && frameBuffer.digits[4] == 5 && frameBuffer.digits[3] % 5 == 4 && transition_step == 0)
+  if ((currentTimeReal + 4) % 300) // multiple of 5min (minus the time it takes for the transition to complete)
   {
     transition_step = 1;
   }
