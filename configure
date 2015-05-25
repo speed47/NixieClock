@@ -31,7 +31,7 @@ FREQUENCY=48
 TEENSY_VERSION=required
 ARDUINO_PATH=required
 RTC_COMPENSATE=0
-NIXIE_DEBUG=1
+PROJECT_DEBUG=1
 
 savedargs="$@"
 
@@ -83,7 +83,7 @@ if [ -n "$1" ] ; then
 					echo "configure: expected a number in the range 0-3 instead of '$2'"
 					exit 1;
 				else
-					NIXIE_DEBUG=$2
+					PROJECT_DEBUG=$2
 				fi
 				shift 2 ;;
 			--) shift ; break ;;
@@ -129,4 +129,4 @@ sed -i -re "s%#ARDUINO_PATH#%$ARDUINO_PATH%g" $TARGET
 sed -i -re "s%#COMPIL_SUB_PATH#%$COMPIL_SUB_PATH%g" $TARGET
 sed -i -re "s%#COMPIL_PREFIX#%$COMPIL_PREFIX%g" $TARGET
 sed -i -re "s%#RTC_COMPENSATE#%$RTC_COMPENSATE%g" $TARGET
-sed -i -re "s%#NIXIE_DEBUG#%$NIXIE_DEBUG%g" $TARGET
+sed -i -re "s%#PROJECT_DEBUG#%$PROJECT_DEBUG%g" $TARGET

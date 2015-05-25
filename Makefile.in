@@ -13,20 +13,26 @@ TEENSY = #TEENSY_VERSION#
 # Set to 24000000, 48000000, or 96000000 to set CPU core speed
 TEENSY_CORE_SPEED = #FREQUENCY#000000
 
-# Some libraries will require this to be defined
-ARDUINO = 106
-TEENSYDUINO = 121
-
 # configurable options
 OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
-# more speed at the cost of size
-#OPTIONS += -O2
-
 # less size at the cost of speed
 OPTIONS += -Os
+# vs. more speed at the cost of size (has sometimes adverse effects!!)
+#OPTIONS += -O2
 
-# ------- stuff below shouldn't need to be modified -----------
+# compile-time optim, needs modified ld script, and removing dupe strlen
+# also breaks usb serial for now. don't forget to distclean.
+#OPTIONS += -flto
+
+# libs to compile
+TEENSYLIBS = OctoWS2811
+
+# optional: cppclean location
+CPPCLEAN = $(HOME)/cppclean/cppclean
+
+###### END OF CONFIGURATION ###################################
+###############################################################
 
 #************************************************************************
 # Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
@@ -38,7 +44,6 @@ OPTIONS += -Os
 BUILDDIR = $(abspath $(CURDIR)/build)
 
 # path location for Teensy Loader, teensy_post_compile and teensy_reboot
-#TOOLSPATH = $(CURDIR)/tools
 TOOLSPATH = $(ARDUINOPATH)/hardware/tools
 
 ifeq ($(OS),Windows_NT)
@@ -51,30 +56,53 @@ else
 endif
 
 # path location for Teensy 3 core
-have_avr_in_path = $(wildcard $(ARDUINOPATH)/hardware/teensy/avr/cores/teensy3) 
-ifeq ($(strip $(have_avr_in_path)),)
-  # .. for arduino 1.0.x
-  COREPATH = $(ARDUINOPATH)/hardware/teensy/cores/teensy3
-else
-  # .. for arduino 1.6.x
-  COREPATH = $(ARDUINOPATH)/hardware/teensy/avr/cores/teensy3
-endif
+COREPATH = $(shell find $(ARDUINOPATH) -type d -name teensy3)
 
 # path location for Arduino libraries
-LIBRARYPATH = libraries
+LIBRARYBASEDIR = $(ARDUINOPATH)/hardware/teensy/avr/libraries
+ifeq ($(wildcard $(LIBRARYBASEDIR)),)
+    LIBRARYBASEDIR = $(ARDUINOPATH)/libraries
+endif
+LIBRARYPATH = $(foreach lib,$(TEENSYLIBS),$(LIBRARYBASEDIR)/$(lib))
 
 # path location for the arm-none-eabi compiler
-#COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
-COMPILERPATH = $(TOOLSPATH)/#COMPIL_SUB_PATH#
-#arm/bin
+COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
+ifeq ($(wildcard $(COMPILERPATH)),)
+    COMPILERPATH = $(TOOLSPATH)/arm/bin
+endif
+
+# Some libraries will require those two to be defined
+# arduino version
+ARDUINOFULL = $(shell head -n1 $(ARDUINOPATH)/lib/version.txt)
+ARDUINO     = $(shell head -n1 $(ARDUINOPATH)/lib/version.txt | sed -re 's/[^0-9]//g')
+ifeq ($(ARDUINO),)
+    $(warning Could not autodetect ARDUINO version, using dummy value)
+    ARDUINOFULL = 1
+    ARDUINO     = 1
+endif
+# teensyduino version
+TEENSYDUINOFULL = $(shell cat $(ARDUINOPATH)/lib/teensyduino.txt)
+TEENSYDUINO     = $(shell sed -re 's/[^0-9]//g' $(ARDUINOPATH)/lib/teensyduino.txt)
+ifeq ($(TEENSYDUINO),)
+    # hacky way to find the version number on old versions
+    TEENSYDUINOFULL = $(shell strings $(ARDUINOPATH)/hardware/tools/teensy | grep -Eo '^Teensy Loader [.0-9a-z-]+' | head -n1 | sed -re 's/Teensy Loader //')
+    TEENSYDUINO     = $(shell strings $(ARDUINOPATH)/hardware/tools/teensy | grep -Eo '^Teensy Loader [.0-9]+' | head -n1 | sed -re 's/Teensy Loader //;s/[^0-9]//g')
+    # fallback's fallback
+    ifeq ($(TEENSYDUINO),)
+        $(warning Could not autodetect TEENSYDUINO version, using dummy value)
+        TEENSYDUINOFULL = 1
+        TEENSYDUINO     = 1
+    endif
+endif
 
 #************************************************************************
 # Settings below this point usually do not need to be edited
 #************************************************************************
 
-GITREVISION = $(shell git log -n 1 --pretty=format:%h)
-GITDIRTYTMP = $(shell git diff | md5sum | cut -c1-8)
-BUILDTIME = $(shell date)
+GITREVISION = $(shell git log -n 1 --pretty=format:%h 2>/dev/null || echo unknown)
+GITBRANCH   = $(shell git branch | grep '*' | cut -d' ' -f2- | sed -re 's/[() ]/_/g' || echo nobranch)
+GITDIRTYTMP = $(shell git diff 2>/dev/null | md5sum | cut -c1-8)
+BUILDTIME = $(shell date | sed -re 's/ /_/g')
 ifeq ($(GITDIRTYTMP), d41d8cd9)
     GITDIRTY = clean
 else
@@ -86,15 +114,16 @@ CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -f
 CPPFLAGS += -DTIME_T=$(shell date +%s)
 CPPFLAGS += -DGIT_REVISION="$(GITREVISION)"
 CPPFLAGS += -DGIT_DIRTY="$(GITDIRTY)"
+CPPFLAGS += -DGIT_BRANCH="$(GITBRANCH)"
 CPPFLAGS += -DBUILD_TIME="$(BUILDTIME)"
 CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
-CPPFLAGS += -DNIXIE_DEBUG=#NIXIE_DEBUG#
+CPPFLAGS += -DPROJECT_DEBUG=#PROJECT_DEBUG#
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 
 # compiler options for C only
-CFLAGS =
+CFLAGS = -std=gnu99
 
 
 FLASHSIZE30=131072
@@ -128,17 +157,25 @@ ifdef TEENSYDUINO
 endif
 
 # linker options
-LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb --specs=nano.specs -T$(LDSCRIPT) -Wl,-Map,$(TARGET).map
+LDFLAGS = $(OPTIONS) -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb --specs=nano.specs -T$(LDSCRIPT) -Wl,-Map,$(TARGET).map
 
 # additional libraries to link
-LIBS =
+LIBS = -lm
+
+# gcc filter
+GCCFILTER = $(shell which gccfilter)
+ifeq ($(GCCFILTER),)
+	GCCFILTER=
+else
+	GCCFILTER += -c
+endif
 
 # names for the compiler programs
-CC = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#gcc
-AR = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#ar
-CXX = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#g++
-OBJCOPY = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#objcopy
-SIZE = $(abspath $(COMPILERPATH))/#COMPIL_PREFIX#size
+CC = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
+AR = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-ar
+CXX = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-g++
+OBJCOPY = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
+SIZE = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-size
 
 # automatically create lists of the sources and objects
 LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
@@ -157,6 +194,8 @@ SOURCES_CORE   := $(TC_FILES:.c=.o) $(TCPP_FILES:.cpp=.o) $(LC_FILES:.c=.o) $(LC
 OBJS_SKETCH := $(foreach $(SKETCHSRC),$(SOURCES_SKETCH), $(BUILDDIR)/$($(SKETCHSRC)))
 OBJS_CORE   := $(foreach $(SKETCHSRC),$(SOURCES_CORE), $(BUILDDIR)/$($(SKETCHSRC)))
 
+$(warning Working with arduino $(ARDUINOFULL) and teensyduino $(TEENSYDUINOFULL))
+
 all: hex
 
 build: $(TARGET).elf
@@ -170,6 +209,12 @@ reboot:
 	@-$(abspath $(TOOLSPATH))/teensy_reboot
 
 upload: post_compile reboot
+
+screen:
+	@while ! test -r /dev/ttyACM0 ; do echo -n . ; sleep 1 ; done ; screen /dev/ttyACM0
+
+cppclean:
+	@$(CPPCLEAN) -I $(SKETCHSRC) -I $(COREPATH) $(L_INC) $(C_FILES) $(CPP_FILES) $(INO_FILES)
 
 $(BUILDDIR)/%.o: %.c
 	@/bin/echo -e "[CC]\t$<"
@@ -196,12 +241,13 @@ $(BUILDDIR)/core.a: $(OBJS_CORE)
 
 %.hex: %.elf
 	@/bin/echo -e "[HEX]\t$@"
-	@/bin/echo -e "[REV]\tgit.$(GITREVISION).$(GITDIRTY)"
+	@/bin/echo -e "[REV]\tgit.$(GITREVISION).$(GITBRANCH).$(GITDIRTY)"
 	@$(SIZE) "$<" | awk '{ if (NR==2) { FLASH=$$1+$$2; RAM=$$2+$$3 } } END { printf "[FLASH]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n[RAM]\t%6d/%6d (teensy30: %4.1f%%, teensy31: %4.1f%%)\n", FLASH, $(FLASHSIZE), FLASH/$(FLASHSIZE30)*100, FLASH/$(FLASHSIZE31)*100, RAM, $(RAMSIZE), RAM/$(RAMSIZE30)*100, RAM/$(RAMSIZE31)*100 }'
 	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
 # compiler generated dependency info
--include $(OBJS:.o=.d)
+-include $(OBJS_SKETCH:.o=.d)
+-include $(OBJS_CORE:.o=.d)
 
 clean:
 	@echo "Cleaning sketch build (use distclean to clean teensy lib objects too)..."
