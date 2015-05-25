@@ -62,30 +62,30 @@ void setup()
   uint16_t resetReasonHw = RCM_SRS0;
   resetReasonHw |= (RCM_SRS1<<8);
   uint16_t mask = 1;
-  serial_print("starting up, last reset reason:");
+  out("starting up, last reset reason:");
   do
   {
     switch (mask & resetReasonHw)
     {
       //RCM_SRS0
-      case 0x0001: serial_print(" WakeUp"); break;
-      case 0x0002: serial_print(" LowVoltage");  break;
-      case 0x0004: serial_print(" LossOfClock"); break;
-      case 0x0008: serial_print(" LossOfLock"); break;
+      case 0x0001: out(" WakeUp"); break;
+      case 0x0002: out(" LowVoltage");  break;
+      case 0x0004: out(" LossOfClock"); break;
+      case 0x0008: out(" LossOfLock"); break;
       //case 0x0010 reserved
-      case 0x0020: serial_print(" Watchdog"); break;
-      case 0x0040: serial_print(" ExtResetPin"); break;
-      case 0x0080: serial_print(" PowerOn"); break;
+      case 0x0020: out(" Watchdog"); break;
+      case 0x0040: out(" ExtResetPin"); break;
+      case 0x0080: out(" PowerOn"); break;
       //RCM_SRS1
-      case 0x0100: serial_print(" JTAG"); break;
-      case 0x0200: serial_print(" CoreLockup"); break;
-      case 0x0400: serial_print(" Software"); break;
-      case 0x0800: serial_print(" MDM_AP"); break;
-      case 0x1000: serial_print(" EZPT"); break;
-      case 0x2000: serial_print(" SACKERR"); break;
+      case 0x0100: out(" JTAG"); break;
+      case 0x0200: out(" CoreLockup"); break;
+      case 0x0400: out(" Software"); break;
+      case 0x0800: out(" MDM_AP"); break;
+      case 0x1000: out(" EZPT"); break;
+      case 0x2000: out(" SACKERR"); break;
     }
   } while (mask <<= 1);
-  serial_print("\n");
+  out("\n");
 
   // Set PORTD as output
   pinMode(2, OUTPUT);
@@ -130,14 +130,14 @@ void loop()
   if (cfg.show_time && lastTime != rtc_get())
   {
     lastTime = rtc_get();
-    serial_print( printbuf("%lu\n", lastTime) );
+    out( printbuf("%lu\n", lastTime) );
   }
   if (lastEnd >= nextFpsMark)
   {
     uptime++;
     if (cfg.show_fps)
     {
-      serial_print( printbuf("uptime=%lu, fps=%d\n", uptime, fps) );
+      out( printbuf("uptime=%lu, fps=%d\n", uptime, fps) );
     }
     nextFpsMark = lastEnd + 1000 * 1000;
     fps = 0;
@@ -329,17 +329,17 @@ void handleSerial(char const* buffer, int len)
   else if ((*buffer == 'c' || *buffer == 'C') && len == 1)
   {
     cfg.generator = &generator_clock;
-    serial_print("mode set to CLOCK\n");
+    out("mode set to CLOCK\n");
   }
   else if ((*buffer == 'o' || *buffer == 'O') && len == 1)
   {
     cfg.generator = &generator_counter;
-    serial_print("mode set to COUNTER\n");
+    out("mode set to COUNTER\n");
   }
   else if ((*buffer == 'b' || *buffer == 'B') && len == 1)
   {
     cfg.generator = &generator_birthday;
-    serial_print("mode set to BIRTHDAY\n");
+    out("mode set to BIRTHDAY\n");
   }
   else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
@@ -357,29 +357,29 @@ void handleSerial(char const* buffer, int len)
       gmtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
-    serial_print( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    out( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\n",
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if ((*buffer == 'r' ||*buffer == 'R') && len == 1)
   {
     cfg.want_transition_now = 1;
-    serial_print("Asked for a new transition... NOW!\n");
+    out("Asked for a new transition... NOW!\n");
   }
   else if ((*buffer == 'f' || *buffer == 'F') && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
-    serial_print( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
+    out( printbuf("Show FPS mode is %s\n", cfg.show_fps ? "ON" : "OFF") );
   }
   else if ((*buffer == 'a' || *buffer == 'A') && len == 1)
   {
     cfg.fading = !cfg.fading;
-    serial_print( printbuf("Clock fading mode is %s\n", cfg.fading ? "ON" : "OFF") );
+    out( printbuf("Clock fading mode is %s\n", cfg.fading ? "ON" : "OFF") );
   }
   else if ((*buffer == 'm' ||*buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
-    serial_print( printbuf("Show TIME mode is %s\n", cfg.show_time ? "ON" : "OFF") );
+    out( printbuf("Show TIME mode is %s\n", cfg.show_time ? "ON" : "OFF") );
   }
   else if ((*buffer == 't' || *buffer == 'T') && len == 7)
   {
@@ -395,7 +395,7 @@ void handleSerial(char const* buffer, int len)
     // convert that back to time_t and set the rtc
     newTime = mktime(&tm_target);
     rtc_set(newTime);
-    serial_print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
@@ -417,7 +417,7 @@ void handleSerial(char const* buffer, int len)
     }
     rtc_set(newTime);
     gmtime_r(&newTime, &tm_target);
-    serial_print( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
+    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
@@ -425,19 +425,19 @@ void handleSerial(char const* buffer, int len)
   {
     buffer++;
     uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
-    serial_print( printbuf("Countdown for %lu seconds\n", countdown_seconds) );
+    out( printbuf("Countdown for %lu seconds\n", countdown_seconds) );
     // FIXME: millis() reset not taken into account. tocheck also : uint32 overflow
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
   }
   else if ((*buffer == 'i' ||*buffer == 'I')  && len == 1)
   {
-    serial_print("\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
-    serial_print("Built on " EXPAND2STR(BUILD_TIME) "\n");
-    serial_print("With compiler version " __VERSION__ "\n");
-    serial_print( printbuf("Current RTC compensation value is %d\n", cfg.rtc_compensate) );
-    serial_print( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
-    serial_print( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
+    out("\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\n");
+    out("Built on " EXPAND2STR(BUILD_TIME) "\n");
+    out("With compiler version " __VERSION__ "\n");
+    out( printbuf("Current RTC compensation value is %d\n", cfg.rtc_compensate) );
+    out( printbuf("Uptime is %s\n", seconds2duration(uptime)) );
+    out( printbuf("Teensy core is running at %d MHz\n", F_CPU / 1000000) );
   }
   else if ((*buffer == 'r' || *buffer == 'R') && len > 1)
   {
@@ -445,20 +445,20 @@ void handleSerial(char const* buffer, int len)
     int value;
     if (readInt(buffer, &value) == 1)
     {
-      serial_print( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
+      out( printbuf("RTC compensation value changed from %d to %d\n", cfg.rtc_compensate, value) );
       cfg.rtc_compensate = value;
       rtc_compensate(value);
     }
     else
     {
-      serial_print("parsing error\n");
+      out("parsing error\n");
     }
   }
   else if ((*buffer == 'e' || *buffer == 'E') && len == 1)
   {
     CPU_RESTART; // soft reset
     delay(1000); // justin case
-    serial_print("BUG: reboot failed!?\n"); // never reached
+    out("BUG: reboot failed!?\n"); // never reached
   }
   else if ((*buffer == 'g' || *buffer == 'G') && len == 2)
   {
@@ -466,23 +466,23 @@ void handleSerial(char const* buffer, int len)
     int value = *buffer - '0';
     if (value < 0 || value > 3)
     {
-      serial_print( printbuf("Invalid value %d, expected one of 0 1 2 3\n", value) );
+      out( printbuf("Invalid value %d, expected one of 0 1 2 3\n", value) );
     }
     else if (value > PROJECT_DEBUG)
     {
-      serial_print( printbuf("Can't set debug value to %d, maximum compiled-in value is %d\n", value, PROJECT_DEBUG) );
+      out( printbuf("Can't set debug value to %d, maximum compiled-in value is %d\n", value, PROJECT_DEBUG) );
     }
     else
     {
-      serial_print( printbuf("Debug level changed from %d to %d\n", cfg.debug_level, value) );
+      out( printbuf("Debug level changed from %d to %d\n", cfg.debug_level, value) );
       cfg.debug_level = value;
     }
   }
   else if (len > 0)
   {
-    serial_print("\nUnknown cmd <");
-    serial_print(buffer);
-    serial_print(">. Supported cmds are:\n"
+    out("\nUnknown cmd <");
+    out(buffer);
+    out(">. Supported cmds are:\n"
                  "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\n"
                  "Set RTC compensation: [R]<value>\n"
                  "Toggle options: show [F]ps, show ti[M]e, f[A]ding\n"
