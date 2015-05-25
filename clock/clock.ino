@@ -425,7 +425,7 @@ void handleSerial(char const* buffer, int len)
   {
     buffer++;
     uint32_t countdown_seconds = (buffer[0]-'0') * 10 * 60 + (buffer[1]-'0') * 60 + (buffer[2]-'0') * 10 + (buffer[3]-'0');;
-    serial_print( printbuf("Countdown for %d seconds\n", countdown_seconds) );
+    serial_print( printbuf("Countdown for %lu seconds\n", countdown_seconds) );
     // FIXME: millis() reset not taken into account. tocheck also : uint32 overflow
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
