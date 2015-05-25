@@ -2,3 +2,4 @@ build/
 Makefile
 NixieClock.elf
 NixieClock.hex
+NixieClock.map
