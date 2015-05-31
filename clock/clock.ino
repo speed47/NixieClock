@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "globals.h"
 #include "printbuf.h"
@@ -114,8 +115,9 @@ void setup()
   pinMode(ledsPin, OUTPUT);
 
   // Timezone
-  setenv("TZ", "" EXPAND2STR(TIMEZONE) "", 1);
+  setenv("TZ", EXPAND2STR(TIMEZONE), 1);
   tzset();
+  dbg1("timezone data is timezone=%ld daylight=%d name=%s (tz=%s)", _timezone, _daylight, _tzname[_daylight], EXPAND2STR(TIMEZONE));
 
   // Init wait (pb with ws2811)
   dbg1("sleeping for ws2811 init");
@@ -425,14 +427,6 @@ void handleSerial(char const* buffer, int len)
     out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
-    //int setenvret = setenv("TZ", "NZST-12:00:00NZDT-13:00:00,M10.1.0,M3.3.0", 1);
-    int setenvret = setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
-    tzset();
-    localtime_r(&newTime, &tm_target);
-    out( printbuf("timezone=%ld daylight=%d setenvret=%d\n", _timezone, _daylight, setenvret) );
-    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
-      newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
-      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if ((*buffer == 'w' || *buffer == 'W') && len == 5)
   {
@@ -443,13 +437,26 @@ void handleSerial(char const* buffer, int len)
     cfg.countdown_target_millis = millis() + countdown_seconds * 1000;
     cfg.generator = &generator_countdown;
   }
-  else if ((*buffer == 'i' ||*buffer == 'I')  && len == 1)
+  else if ((*buffer == 'i' || *buffer == 'I')  && len == 1)
   {
+    time_t rtc = rtc_get();
+    struct tm tm_target;
     out("\r\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
     out("Built on " EXPAND2STR(BUILD_TIME) "\r\n");
     out("With compiler version " __VERSION__ "\r\n");
     out( printbuf("Current RTC compensation value is %d\r\n", cfg.rtc_compensate) );
     out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
+    out( printbuf("RTC raw value is %lu\r\n", rtc) );
+    out( printbuf("TZ name is %s with offset %ld and %sDST\r\n",
+      _tzname[_daylight], _timezone, _daylight ? "" : "no " ) );
+    gmtime_r(&rtc, &tm_target);
+    out( printbuf("UTC  : %02d/%02d/%04d %02d:%02d:%02d\r\n",
+      tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
+    localtime_r(&rtc, &tm_target);
+    out( printbuf("Local: %02d/%02d/%04d %02d:%02d:%02d\r\n",
+      tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
     out( printbuf("Teensy core is running at %d MHz\r\n", F_CPU / 1000000) );
   }
   else if ((*buffer == 'r' || *buffer == 'R') && len > 1)
