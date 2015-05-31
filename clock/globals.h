@@ -14,8 +14,8 @@
 # define BUILD_TIME TIME_T
 #endif
 
-#define _EXPAND2STR(str) #str
-#define EXPAND2STR(str) _EXPAND2STR(str)
+#define _EXPAND2STR( str ) #str
+#define EXPAND2STR( str ) _EXPAND2STR( str )
 
 #define CPU_RESTART_ADDR (uint32_t *)0xE000ED0C
 #define CPU_RESTART_VAL 0x5FA0004

@@ -113,6 +113,10 @@ void setup()
   // Leds
   pinMode(ledsPin, OUTPUT);
 
+  // Timezone
+  setenv("TZ", "" EXPAND2STR(TIMEZONE) "", 1);
+  tzset();
+
   // Init wait (pb with ws2811)
   dbg1("sleeping for ws2811 init");
   delay(1000);
@@ -416,7 +420,16 @@ void handleSerial(char const* buffer, int len)
       gmtime_r(&newTime, &tm_target);
     }
     rtc_set(newTime);
-    gmtime_r(&newTime, &tm_target);
+    localtime_r(&newTime, &tm_target);
+    out( printbuf("timezone=%ld daylight=%d\n", _timezone, _daylight) );
+    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
+      newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
+      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
+    //int setenvret = setenv("TZ", "NZST-12:00:00NZDT-13:00:00,M10.1.0,M3.3.0", 1);
+    int setenvret = setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    tzset();
+    localtime_r(&newTime, &tm_target);
+    out( printbuf("timezone=%ld daylight=%d setenvret=%d\n", _timezone, _daylight, setenvret) );
     out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );

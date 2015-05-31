@@ -1,4 +1,5 @@
 build/
+clock.d
 Makefile
 NixieClock.elf
 NixieClock.hex

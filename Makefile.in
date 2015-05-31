@@ -100,9 +100,9 @@ endif
 #************************************************************************
 
 GITREVISION = $(shell git log -n 1 --pretty=format:%h 2>/dev/null || echo unknown)
-GITBRANCH   = $(shell git branch | grep '*' | cut -d' ' -f2- | sed -re 's/[() ]/_/g' || echo nobranch)
+GITBRANCH   = $(shell git branch | grep '*' | cut -d' ' -f2- | sed -re 's/"/_/g' || echo nobranch)
 GITDIRTYTMP = $(shell git diff 2>/dev/null | md5sum | cut -c1-8)
-BUILDTIME = $(shell date | sed -re 's/ /_/g')
+BUILDTIME = $(shell date | sed -re 's/"/_/g')
 ifeq ($(GITDIRTYTMP), d41d8cd9)
     GITDIRTY = clean
 else
@@ -114,10 +114,11 @@ CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -f
 CPPFLAGS += -DTIME_T=$(shell date +%s)
 CPPFLAGS += -DGIT_REVISION="$(GITREVISION)"
 CPPFLAGS += -DGIT_DIRTY="$(GITDIRTY)"
-CPPFLAGS += -DGIT_BRANCH="$(GITBRANCH)"
-CPPFLAGS += -DBUILD_TIME="$(BUILDTIME)"
+CPPFLAGS += -DGIT_BRANCH="\"$(GITBRANCH)\""
+CPPFLAGS += -DBUILD_TIME="\"$(BUILDTIME)\""
 CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
 CPPFLAGS += -DPROJECT_DEBUG=#PROJECT_DEBUG#
+CPPFLAGS += -DTIMEZONE="\"$(TIMEZONE)\""
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
