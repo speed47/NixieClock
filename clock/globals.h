@@ -23,6 +23,7 @@
 #define CPU_RESTART (*CPU_RESTART_ADDR = CPU_RESTART_VAL);
 
 unsigned long getLocalTimeT(void);
+long secondsDiffFromUTC(void);
 
 typedef struct 
 {

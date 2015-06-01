@@ -7,6 +7,7 @@
 #include "clock.h"
 #include "ws2811.h"
 #include "generators.h"
+#include "sun.h"
 
 /* Configuration pins */
 
@@ -440,7 +441,7 @@ void handleSerial(char const* buffer, int len)
   }
   else if ((*buffer == 'i' || *buffer == 'I')  && len == 1)
   {
-    time_t rtc = rtc_get(); //FIXME
+    time_t rtc = rtc_get();
     struct tm tm_utc;
     struct tm tm_local;
     localtime_r(&rtc, &tm_local);
@@ -451,9 +452,11 @@ void handleSerial(char const* buffer, int len)
     out( printbuf("RTC compensation is %d\r\n", cfg.rtc_compensate) );
     out( printbuf("RTC current raw value is %lu\r\n", rtc) );
     out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
+
     out( printbuf("Current TZ is %s (offset %lds)\r\n",
       _tzname[(tm_local.tm_isdst == 0 || tm_local.tm_isdst == 1) ? tm_local.tm_isdst : 0],
       _timezone));
+
     if (_daylight)
     {
       out( printbuf("This TZ is DST-aware (currently %sactive)\r\n", tm_local.tm_isdst == 1 ? "" : "NOT ") );
@@ -462,12 +465,23 @@ void handleSerial(char const* buffer, int len)
     {
       out( printbuf("This TZ is NOT DST-aware\r\n") );
     }
+
     out( printbuf("UTC  : %02d/%02d/%04d %02d:%02d:%02d\r\n",
       tm_utc.tm_mday, tm_utc.tm_mon+1, tm_utc.tm_year+1900,
       tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec) );
     out( printbuf("Local: %02d/%02d/%04d %02d:%02d:%02d\r\n",
       tm_local.tm_mday, tm_local.tm_mon+1, tm_local.tm_year+1900,
       tm_local.tm_hour, tm_local.tm_min, tm_local.tm_sec) );
+ 
+    const float *sunRise;
+    const float *sunSet;
+    getSunInfo(&sunRise, &sunSet);
+    int rise_hour = (int)*sunRise;
+    int rise_min  = (int)(60 * (*sunRise - (int)*sunRise));
+    int set_hour = (int)*sunSet;
+    int set_min  = (int)(60 * (*sunSet - (int)*sunSet));
+    out( printbuf( "Today the sun rises at %dh%02d and sets at %dh%02d\r\n", rise_hour, rise_min, set_hour, set_min) );
+
     out( printbuf("Teensy core is running at %d MHz\r\n", F_CPU / 1000000) );
   }
   else if ((*buffer == 'r' || *buffer == 'R') && len > 1)

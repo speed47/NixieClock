@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "sun.h"
+#include "globals.h"
 
 void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *sunRiseOut, float *sunSetOut)
 {
@@ -171,8 +172,8 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
 }
 
 int lastComputedDay = -1;
-float latitude  = 50.7217; /* tourcoing by default */
-float longitude =  3.1592; /* represent ! */
+float latitude  = 50.7217; /* tourcoing by default */ //FIXME
+float longitude =  3.1592; /* represent ! */ //FIXME
 
 void setLocation(float lat, float lng)
 {
@@ -192,7 +193,8 @@ void getSunInfo(const float **sunRiseOut, const float **sunSetOut)
   // the day since the last computation has changed, recompute the values
   if (sunRise == SUNTIME_INVALID || sunSet == SUNTIME_INVALID || splittedTime->tm_yday != lastComputedDay)
   {
-    setSunRiseSunSet(now, latitude, longitude, 2 /*FIXME*/, &sunRise, &sunSet);
+    float offset = secondsDiffFromUTC() / 3600.f;
+    setSunRiseSunSet(now, latitude, longitude, offset, &sunRise, &sunSet);
     lastComputedDay = splittedTime->tm_yday;
   }
   *sunRiseOut = &sunRise;
