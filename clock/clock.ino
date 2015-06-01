@@ -115,9 +115,9 @@ void setup()
   pinMode(ledsPin, OUTPUT);
 
   // Timezone
-  setenv("TZ", EXPAND2STR(TIMEZONE), 1);
+  setenv("TZ", TIMEZONE, 1);
   tzset();
-  dbg1("timezone data is timezone=%ld daylight=%d name=%s (tz=%s)", _timezone, _daylight, _tzname[_daylight], EXPAND2STR(TIMEZONE));
+  dbg1("timezone data is timezone=%ld daylight=%d name=%s (tz=%s)", _timezone, _daylight, _tzname[_daylight], TIMEZONE);
 
   // Init wait (pb with ws2811)
   dbg1("sleeping for ws2811 init");

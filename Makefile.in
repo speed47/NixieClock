@@ -118,7 +118,7 @@ CPPFLAGS += -DGIT_BRANCH="\"$(GITBRANCH)\""
 CPPFLAGS += -DBUILD_TIME="\"$(BUILDTIME)\""
 CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
 CPPFLAGS += -DPROJECT_DEBUG=#PROJECT_DEBUG#
-CPPFLAGS += -DTIMEZONE="\"#TIMEZONE#\""
+CPPFLAGS += -DTIMEZONE="\\\"#TIMEZONE#\\\""
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
