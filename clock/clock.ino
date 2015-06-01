@@ -131,11 +131,11 @@ void loop()
   static uint32_t lastEnd = micros();
   static uint32_t nextFpsMark = lastEnd + 1000*1000;
   static uint16_t fps = 0;
-  static uint32_t lastTime = rtc_get();
-  
-  if (cfg.show_time && lastTime != rtc_get())
+  static uint32_t lastTime = getLocalTimeT();
+
+  if (cfg.show_time && lastTime != getLocalTimeT())
   {
-    lastTime = rtc_get();
+    lastTime = getLocalTimeT();
     out( printbuf("%lu\r\n", lastTime) );
   }
   if (lastEnd >= nextFpsMark)
@@ -269,7 +269,7 @@ void securityNixieDot()
   }
 }
 
-void getTmFromString(struct tm* tm, char const* buffer)
+void setStructTmFromString(struct tm* tm, char const* buffer)
 {
   tm->tm_mday = (buffer[0]  - '0') * 10 + (buffer[1]  - '0');
   tm->tm_mon  = (buffer[2]  - '0') * 10 + (buffer[3]  - '0') - 1;
@@ -277,6 +277,7 @@ void getTmFromString(struct tm* tm, char const* buffer)
   tm->tm_hour = (buffer[6]  - '0') * 10 + (buffer[7]  - '0');
   tm->tm_min  = (buffer[8]  - '0') * 10 + (buffer[9]  - '0');
   tm->tm_sec  = (buffer[10] - '0') * 10 + (buffer[11] - '0');
+  tm->tm_isdst= -1; // cf man 3 mktime() : DST/noDST autodetected from sys tz
 }
 
 int readInt(const char* buffer, int *result)
@@ -354,13 +355,13 @@ void handleSerial(char const* buffer, int len)
     if (len == 13)
     {
       //Ymmddyyhhmmss
-      getTmFromString(&tm_target, buffer);
+      setStructTmFromString(&tm_target, buffer);
       cfg.newyear_target = mktime(&tm_target);
     }
     else
     {
       cfg.newyear_target = getTimestampFromString(buffer, 10);
-      gmtime_r(&cfg.newyear_target, &tm_target);
+      localtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
     out( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
@@ -392,8 +393,8 @@ void handleSerial(char const* buffer, int len)
     buffer++;
     // first; get the current date
     struct tm tm_target;
-    time_t newTime = rtc_get();
-    gmtime_r(&newTime, &tm_target);
+    time_t newTime = rtc_get(); //FIXME
+    localtime_r(&newTime, &tm_target);
     // then, change the time part
     tm_target.tm_hour = (buffer[0]-'0')*10 + (buffer[1]-'0');
     tm_target.tm_min  = (buffer[2]-'0')*10 + (buffer[3]-'0');
@@ -413,13 +414,13 @@ void handleSerial(char const* buffer, int len)
     if (len == 13)
     {
       //Dmmddyyhhmmss
-      getTmFromString(&tm_target, buffer);
+      setStructTmFromString(&tm_target, buffer);
       newTime = mktime(&tm_target);
     }
     else
     {
       newTime = getTimestampFromString(buffer, 10);
-      gmtime_r(&newTime, &tm_target);
+      localtime_r(&newTime, &tm_target);
     }
     rtc_set(newTime);
     localtime_r(&newTime, &tm_target);
@@ -439,24 +440,34 @@ void handleSerial(char const* buffer, int len)
   }
   else if ((*buffer == 'i' || *buffer == 'I')  && len == 1)
   {
-    time_t rtc = rtc_get();
-    struct tm tm_target;
+    time_t rtc = rtc_get(); //FIXME
+    struct tm tm_utc;
+    struct tm tm_local;
+    localtime_r(&rtc, &tm_local);
+    gmtime_r(&rtc, &tm_utc);
     out("\r\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
     out("Built on " EXPAND2STR(BUILD_TIME) "\r\n");
-    out("With compiler version " __VERSION__ "\r\n");
-    out( printbuf("Current RTC compensation value is %d\r\n", cfg.rtc_compensate) );
+    out("With compiler v" __VERSION__ "\r\n");
+    out( printbuf("RTC compensation is %d\r\n", cfg.rtc_compensate) );
+    out( printbuf("RTC current raw value is %lu\r\n", rtc) );
     out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
-    out( printbuf("RTC raw value is %lu\r\n", rtc) );
-    out( printbuf("TZ name is %s with offset %ld and %sDST\r\n",
-      _tzname[_daylight], _timezone, _daylight ? "" : "no " ) );
-    gmtime_r(&rtc, &tm_target);
+    out( printbuf("Current TZ is %s (offset %lds)\r\n",
+      _tzname[(tm_local.tm_isdst == 0 || tm_local.tm_isdst == 1) ? tm_local.tm_isdst : 0],
+      _timezone));
+    if (_daylight)
+    {
+      out( printbuf("This TZ is DST-aware (currently %sactive)\r\n", tm_local.tm_isdst == 1 ? "" : "NOT ") );
+    }
+    else
+    {
+      out( printbuf("This TZ is NOT DST-aware\r\n") );
+    }
     out( printbuf("UTC  : %02d/%02d/%04d %02d:%02d:%02d\r\n",
-      tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
-      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
-    localtime_r(&rtc, &tm_target);
+      tm_utc.tm_mday, tm_utc.tm_mon+1, tm_utc.tm_year+1900,
+      tm_utc.tm_hour, tm_utc.tm_min, tm_utc.tm_sec) );
     out( printbuf("Local: %02d/%02d/%04d %02d:%02d:%02d\r\n",
-      tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
-      tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
+      tm_local.tm_mday, tm_local.tm_mon+1, tm_local.tm_year+1900,
+      tm_local.tm_hour, tm_local.tm_min, tm_local.tm_sec) );
     out( printbuf("Teensy core is running at %d MHz\r\n", F_CPU / 1000000) );
   }
   else if ((*buffer == 'r' || *buffer == 'R') && len > 1)

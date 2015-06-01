@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include "core_pins.h"
 
 #ifndef GIT_REVISION
 # define GIT_REVISION none
@@ -20,6 +21,8 @@
 #define CPU_RESTART_ADDR (uint32_t *)0xE000ED0C
 #define CPU_RESTART_VAL 0x5FA0004
 #define CPU_RESTART (*CPU_RESTART_ADDR = CPU_RESTART_VAL);
+
+unsigned long getLocalTimeT(void);
 
 typedef struct 
 {

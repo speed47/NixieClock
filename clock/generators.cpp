@@ -2,6 +2,7 @@
 #include "makeColor.h"
 #include "globals.h"
 #include "printbuf.h"
+#include "core_pins.h"
 
 // helper functions
 void splitTimeToFramebuffer(unsigned long time, enum splitMode split_mode)
@@ -48,7 +49,7 @@ void generator_clock()
   frame++;
   
   // Get Current Time
-  unsigned int currentTime = rtc_get(); // might be modified +/- 1 by fading algo
+  unsigned int currentTime = getLocalTimeT(); // might be modified +/- 1 by fading algo
   unsigned int currentTimeReal = currentTime; // we need the real unmodified currentTime later (at least for some dot modes)
   
   if (cfg.fading)
@@ -62,11 +63,11 @@ void generator_clock()
       uint8_t percent = 4 + ((4 * RTC_TPR) / 4096);
       if((frame%8) < percent)
       {
-        currentTime = rtc_get();
+        currentTime = getLocalTimeT();
       }
       else
       {
-        currentTime = rtc_get() - 1;
+        currentTime = getLocalTimeT() - 1;
       }
     }
     // 250ms before change
@@ -76,21 +77,21 @@ void generator_clock()
       uint8_t percent = (4 * (RTC_TPR-28672)) / 4096;
       if((frame%8) < percent)
       {
-        currentTime = rtc_get()+1;
+        currentTime = getLocalTimeT()+1;
       }
       else
       {
-        currentTime = rtc_get();
+        currentTime = getLocalTimeT();
       }
     }
     else
     {
-      currentTime = rtc_get();
+      currentTime = getLocalTimeT();
     }
   }
   else
   {
-    currentTime = rtc_get();
+    currentTime = getLocalTimeT();
   }
 
   /* UPDATE DOTS */
@@ -142,8 +143,8 @@ void generator_clock()
 
   if (transition_step > 0)
   {
-    static unsigned int lastTime = rtc_get();
-    currentTime = rtc_get();
+    static unsigned int lastTime = getLocalTimeT();
+    currentTime = getLocalTimeT();
     /* steps :
     1 => set vars to their init value then set step=2
     2, 3 => casinoize all nixies (2 seconds)
@@ -261,8 +262,8 @@ void generator_newyear()
   frame++;
 
   // config_newyear_target is target timestamp
-  // rtc_get() is current timestamp
-  int32_t togo_sec = cfg.newyear_target - rtc_get();
+  // getLocalTimeT() is current timestamp
+  int32_t togo_sec = cfg.newyear_target - getLocalTimeT();
   unsigned int togo_ms = (32768 - RTC_TPR) / (32768 / 1000);
 
   /* Turn dots OFF */
