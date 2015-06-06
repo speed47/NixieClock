@@ -7,13 +7,14 @@
 
 void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *sunRiseOut, float *sunSetOut)
 {
-  struct tm *gmDate = gmtime(&time);
+  struct tm splittedDate;
+  gmtime_r(&time, &splittedDate);
 
   // calc the day of the year
-  float N1 = floorf(275.0 * (gmDate->tm_mon+1) /9.0);
-  float N2 = floorf(( (gmDate->tm_mon+1) +9.0)/12.0);
-  float N3 = 1 + floorf(( (gmDate->tm_year+1900) - 4 * floorf( (gmDate->tm_year+1900) / 4) + 2) / 3);
-  float N = N1 - (N2 * N3) + gmDate->tm_mday - 30;
+  float N1 = floorf(275.0 * (splittedDate.tm_mon+1) /9.0);
+  float N2 = floorf(( (splittedDate.tm_mon+1) +9.0)/12.0);
+  float N3 = 1 + floorf(( (splittedDate.tm_year+1900) - 4 * floorf( (splittedDate.tm_year+1900) / 4) + 2) / 3);
+  float N = N1 - (N2 * N3) + splittedDate.tm_mday - 30;
 
   // convert the longitude to hour value and calculate an approximate time
 
@@ -186,16 +187,17 @@ void getSunInfo(const float **sunRiseOut, const float **sunSetOut)
 {
   static float sunRise = SUNTIME_INVALID;
   static float sunSet  = SUNTIME_INVALID;
-  time_t now = time(NULL);
-  struct tm *splittedTime = gmtime(&now);
+  time_t now = rtc_get();
+  struct tm splittedDate;
+  gmtime_r(&now, &splittedDate);
 
   // if either one of the above variables has not yet been set (-1), or if
   // the day since the last computation has changed, recompute the values
-  if (sunRise == SUNTIME_INVALID || sunSet == SUNTIME_INVALID || splittedTime->tm_yday != lastComputedDay)
+  if (sunRise == SUNTIME_INVALID || sunSet == SUNTIME_INVALID || splittedDate.tm_yday != lastComputedDay)
   {
     float offset = secondsDiffFromUTC() / 3600.f;
     setSunRiseSunSet(now, latitude, longitude, offset, &sunRise, &sunSet);
-    lastComputedDay = splittedTime->tm_yday;
+    lastComputedDay = splittedDate.tm_yday;
   }
   *sunRiseOut = &sunRise;
   *sunSetOut  = &sunSet;
