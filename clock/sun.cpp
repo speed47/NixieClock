@@ -10,29 +10,23 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   struct tm splittedDate;
   gmtime_r(&time, &splittedDate);
 
-  // calc the day of the year
-  float N1 = floorf(275.0 * (splittedDate.tm_mon+1) /9.0);
-  float N2 = floorf(( (splittedDate.tm_mon+1) +9.0)/12.0);
-  float N3 = 1 + floorf(( (splittedDate.tm_year+1900) - 4 * floorf( (splittedDate.tm_year+1900) / 4) + 2) / 3);
-  float N = N1 - (N2 * N3) + splittedDate.tm_mday - 30;
-
   // convert the longitude to hour value and calculate an approximate time
 
   float lngHour = lng / 15.0;
 
-  float tRise = N + ((6 - lngHour) / 24.0);
-  float tSet = N + ((18 - lngHour) / 24.0);
+  float tRise = (splittedDate.tm_yday + 1) + (( 6 - lngHour) / 24.0);
+  float tSet  = (splittedDate.tm_yday + 1) + ((18 - lngHour) / 24.0);
 
   // calculate the Sun's mean anomaly
 
   float MRise = (0.9856 * tRise) - 3.289;
-  float MSet = (0.9856 * tSet) - 3.289;
+  float MSet  = (0.9856 * tSet)  - 3.289;
 
   // calculate the Sun's true longitude
 
-  (void) PI;
-  float LRise = MRise + (1.916 * sinf(PI/180.0 *MRise)) + (0.020 * sinf(PI/180.0 *2 * MRise)) + 282.634;
-  float LSet = MSet + (1.916 * sinf(PI/180.0 *MSet)) + (0.020 * sinf(PI/180.0 *2 * MSet)) + 282.634;
+  //(void) PI;
+  float LRise = MRise + (1.916 * sinf(PI/180.0 *MRise)) + (0.020 * sinf(PI/180.0 * 2 * MRise)) + 282.634;
+  float LSet  = MSet  + (1.916 * sinf(PI/180.0 *MSet )) + (0.020 * sinf(PI/180.0 * 2 * MSet )) + 282.634;
 
   if(LRise < 0)
   {
@@ -53,7 +47,7 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   // calculate the Sun's right ascension
 
   float RARise = (180.0/PI) * atanf(0.91764 * tanf(PI/180.0 *LRise));
-  float RASet = (180.0/PI) * atanf(0.91764 * tanf(PI/180.0 *LSet));
+  float RASet  = (180.0/PI) * atanf(0.91764 * tanf(PI/180.0 *LSet));
 
   if(RARise < 0)
   {
@@ -84,18 +78,18 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   //right ascension value needs to be converted into hours
 
   RARise = RARise / 15.0;
-  RASet = RASet / 15.0;
+  RASet  = RASet  / 15.0;
 
   //calculate the Sun's declination
 
   float sinDecRise = 0.39782 * sinf(PI/180.0 *LRise);
+  float sinDecSet  = 0.39782 * sinf(PI/180.0 *LSet);
   float cosDecRise = cosf(PI/180.0 *(180.0/PI) *asinf(sinDecRise));
-  float sinDecSet = 0.39782 * sinf(PI/180.0 *LSet);
-  float cosDecSet = cosf(PI/180.0 *(180.0/PI) *asinf(sinDecSet));
+  float cosDecSet  = cosf(PI/180.0 *(180.0/PI) *asinf(sinDecSet));
 
   //calculate the Sun's local hour angle
   float cosHRise = (cosf(PI/180.0 *90.5) - (sinDecRise * sinf(PI/180.0 *lat))) / (cosDecRise * cosf(PI/180.0 *lat));
-  float cosHSet = (cosf(PI/180.0 *90.5) - (sinDecSet * sinf(PI/180.0 *lat))) / (cosDecSet * cosf(PI/180.0 *lat));
+  float cosHSet =  (cosf(PI/180.0 *90.5) - (sinDecSet  * sinf(PI/180.0 *lat))) / (cosDecSet  * cosf(PI/180.0 *lat));
 
   //the sun never sets, or never rises
   if (cosHRise >  1)
@@ -116,17 +110,17 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   float HRise =(360 - ( (180.0/PI) *acosf(cosHRise)));
   float HSet = (180.0/PI) *acosf(cosHSet);
   HRise = HRise / 15.0;
-  HSet = HSet / 15.0;
+  HSet  = HSet  / 15.0;
 
   //calculate local mean time of rising/setting
 
   float TRise = HRise + RARise - (0.06571 * tRise) - 6.622;
-  float TSet = HSet + RASet - (0.06571 * tSet) - 6.622;
+  float TSet  = HSet  + RASet  - (0.06571 * tSet)  - 6.622;
 
   // adjust back to UTC
 
   float UTRise = TRise - lngHour;
-  float UTSet = TSet - lngHour;
+  float UTSet  = TSet  - lngHour;
   if(UTRise < 0)
   {
     UTRise += 24;
@@ -147,7 +141,7 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   // convert UT value to local time zone of latitude/longitude
 
   float RiseTime = UTRise + offset;
-  float SetTime = UTSet + offset;
+  float SetTime  = UTSet  + offset;
 
   if(RiseTime < 0)
   {

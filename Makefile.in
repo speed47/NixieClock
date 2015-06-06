@@ -109,6 +109,14 @@ else
     GITDIRTY = dirty-$(GITDIRTYTMP)
 endif
 
+# gcc filter
+GCCFILTER = $(shell which gccfilter)
+ifeq ($(GCCFILTER),)
+	GCCFILTER=
+else
+	GCCFILTER += -c
+endif
+
 # CPPFLAGS = compiler options for C and C++
 CPPFLAGS = -Wall -Werror -g -mcpu=cortex-m4 -mthumb -nostdlib -fdata-sections -ffunction-sections -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(SKETCHSRC) -I$(COREPATH)
 CPPFLAGS += -DTIME_T=$(shell date +%s)
@@ -118,7 +126,11 @@ CPPFLAGS += -DGIT_BRANCH="\"$(GITBRANCH)\""
 CPPFLAGS += -DBUILD_TIME="\"$(BUILDTIME)\""
 CPPFLAGS += -DRTC_COMPENSATE=#RTC_COMPENSATE#
 CPPFLAGS += -DPROJECT_DEBUG=#PROJECT_DEBUG#
+ifeq ($(GCCFILTER),)
+CPPFLAGS += -DTIMEZONE="\"#TIMEZONE#\""
+else
 CPPFLAGS += -DTIMEZONE="\\\"#TIMEZONE#\\\""
+endif
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
@@ -162,14 +174,6 @@ LDFLAGS = $(OPTIONS) -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb --specs=nano.
 
 # additional libraries to link
 LIBS = -lm
-
-# gcc filter
-GCCFILTER = $(shell which gccfilter)
-ifeq ($(GCCFILTER),)
-	GCCFILTER=
-else
-	GCCFILTER += -c
-endif
 
 # names for the compiler programs
 CC = $(GCCFILTER) $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
