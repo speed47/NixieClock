@@ -18,7 +18,7 @@ Optional arguments:
 --debug|-d <0-3> : specify debug level (default=1)
 --timezone <TZ> : specify default timezone (TZ format e.g. CET-1CEST,M3.5.0,M10.5.0/3 for Paris, autodetected from your build machine if not specified)
 
-Example: ./configure --tensy-version 31 --frequency 96 --rtc-compensate -46 --arduino-path ~/arduino-1.0.6 --debug 0
+Example: ./configure --teensy-version 31 --frequency 96 --rtc-compensate -46 --arduino-path ~/arduino-1.0.6 --debug 0
 
 EOF
 }
