@@ -12,21 +12,20 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
 
   // convert the longitude to hour value and calculate an approximate time
 
-  float lngHour = lng / 15.0;
+  float lngHour = lng / 15.0f;
 
-  float tRise = (splittedDate.tm_yday + 1) + (( 6 - lngHour) / 24.0);
-  float tSet  = (splittedDate.tm_yday + 1) + ((18 - lngHour) / 24.0);
+  float tRise = (splittedDate.tm_yday + 1) + (( 6 - lngHour) / 24.0f);
+  float tSet  = (splittedDate.tm_yday + 1) + ((18 - lngHour) / 24.0f);
 
   // calculate the Sun's mean anomaly
 
-  float MRise = (0.9856 * tRise) - 3.289;
-  float MSet  = (0.9856 * tSet)  - 3.289;
+  float MRise = (0.9856f * tRise) - 3.289f;
+  float MSet  = (0.9856f * tSet)  - 3.289f;
 
   // calculate the Sun's true longitude
 
-  //(void) PI;
-  float LRise = MRise + (1.916 * sinf(PI/180.0 *MRise)) + (0.020 * sinf(PI/180.0 * 2 * MRise)) + 282.634;
-  float LSet  = MSet  + (1.916 * sinf(PI/180.0 *MSet )) + (0.020 * sinf(PI/180.0 * 2 * MSet )) + 282.634;
+  float LRise = MRise + (1.916f * sinf(PI/180.0f *MRise)) + (0.020f * sinf(PI/180.0f * 2 * MRise)) + 282.634f;
+  float LSet  = MSet  + (1.916f * sinf(PI/180.0f *MSet )) + (0.020f * sinf(PI/180.0f * 2 * MSet )) + 282.634f;
 
   if(LRise < 0)
   {
@@ -46,8 +45,8 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
   }
   // calculate the Sun's right ascension
 
-  float RARise = (180.0/PI) * atanf(0.91764 * tanf(PI/180.0 *LRise));
-  float RASet  = (180.0/PI) * atanf(0.91764 * tanf(PI/180.0 *LSet));
+  float RARise = (180.0f/PI) * atanf(0.91764f * tanf(PI/180.0f * LRise));
+  float RASet  = (180.0f/PI) * atanf(0.91764f * tanf(PI/180.0f * LSet));
 
   if(RARise < 0)
   {
@@ -68,28 +67,28 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
 
   // right ascension value needs to be in the same quadrant as L
 
-  float LquadrantRise  = (floorf( LRise/90.0)) * 90;
-  float RAquadrantRise = (floorf(RARise/90.0)) * 90;
+  float LquadrantRise  = (floorf( LRise/90.0f)) * 90;
+  float RAquadrantRise = (floorf(RARise/90.0f)) * 90;
   RARise = RARise + (LquadrantRise - RAquadrantRise);
-  float LquadrantSet  = (floorf( LSet/90.0)) * 90;
-  float RAquadrantSet = (floorf(RASet/90.0)) * 90;
+  float LquadrantSet  = (floorf( LSet/90.0f)) * 90;
+  float RAquadrantSet = (floorf(RASet/90.0f)) * 90;
   RASet = RASet + (LquadrantSet - RAquadrantSet);
 
   //right ascension value needs to be converted into hours
 
-  RARise = RARise / 15.0;
-  RASet  = RASet  / 15.0;
+  RARise = RARise / 15.0f;
+  RASet  = RASet  / 15.0f;
 
   //calculate the Sun's declination
 
-  float sinDecRise = 0.39782 * sinf(PI/180.0 *LRise);
-  float sinDecSet  = 0.39782 * sinf(PI/180.0 *LSet);
-  float cosDecRise = cosf(PI/180.0 *(180.0/PI) *asinf(sinDecRise));
-  float cosDecSet  = cosf(PI/180.0 *(180.0/PI) *asinf(sinDecSet));
+  float sinDecRise = 0.39782f * sinf(PI/180.0f * LRise);
+  float sinDecSet  = 0.39782f * sinf(PI/180.0f * LSet);
+  float cosDecRise = cosf(PI/180.0f * (180.0f/PI) * asinf(sinDecRise));
+  float cosDecSet  = cosf(PI/180.0f * (180.0f/PI) * asinf(sinDecSet));
 
   //calculate the Sun's local hour angle
-  float cosHRise = (cosf(PI/180.0 *90.5) - (sinDecRise * sinf(PI/180.0 *lat))) / (cosDecRise * cosf(PI/180.0 *lat));
-  float cosHSet =  (cosf(PI/180.0 *90.5) - (sinDecSet  * sinf(PI/180.0 *lat))) / (cosDecSet  * cosf(PI/180.0 *lat));
+  float cosHRise = (cosf(PI/180.0f * 90.5f) - (sinDecRise * sinf(PI/180.0f * lat))) / (cosDecRise * cosf(PI/180.0f * lat));
+  float cosHSet =  (cosf(PI/180.0f * 90.5f) - (sinDecSet  * sinf(PI/180.0f * lat))) / (cosDecSet  * cosf(PI/180.0f * lat));
 
   //the sun never sets, or never rises
   if (cosHRise >  1)
@@ -107,15 +106,15 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
 
   // finish calculating H and convert into hours
 
-  float HRise =(360 - ( (180.0/PI) *acosf(cosHRise)));
-  float HSet = (180.0/PI) *acosf(cosHSet);
-  HRise = HRise / 15.0;
-  HSet  = HSet  / 15.0;
+  float HRise =(360 - ( (180.0f/PI) *acosf(cosHRise)));
+  float HSet = (180.0f/PI) *acosf(cosHSet);
+  HRise = HRise / 15.0f;
+  HSet  = HSet  / 15.0f;
 
   //calculate local mean time of rising/setting
 
-  float TRise = HRise + RARise - (0.06571 * tRise) - 6.622;
-  float TSet  = HSet  + RASet  - (0.06571 * tSet)  - 6.622;
+  float TRise = HRise + RARise - (0.06571f * tRise) - 6.622f;
+  float TSet  = HSet  + RASet  - (0.06571f * tSet)  - 6.622f;
 
   // adjust back to UTC
 
