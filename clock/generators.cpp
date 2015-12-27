@@ -428,7 +428,7 @@ void generator_newyear()
       frameBuffer.digits[1] = 2;
       frameBuffer.digits[2] = 0;
       frameBuffer.digits[3] = 1;
-      frameBuffer.digits[4] = 5;
+      frameBuffer.digits[4] = 6; // TODO: I know, I'll make it configurable one day
     }
 
     // stroboscopic leds
