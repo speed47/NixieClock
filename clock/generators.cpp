@@ -263,7 +263,7 @@ void generator_newyear()
 
   // config_newyear_target is target timestamp
   // getLocalTimeT() is current timestamp
-  int32_t togo_sec = cfg.newyear_target - getLocalTimeT();
+  int32_t togo_sec = cfg.newyear_target - rtc_get(); // NOT LOCAL//getLocalTimeT();
   unsigned int togo_ms = (32768 - RTC_TPR) / (32768 / 1000);
 
   /* Turn dots OFF */

@@ -337,17 +337,17 @@ void handleSerial(char const* buffer, int len)
   else if ((*buffer == 'c' || *buffer == 'C') && len == 1)
   {
     cfg.generator = &generator_clock;
-    out("mode set to CLOCK\r\n");
+    out("\rmode set to CLOCK\r\n");
   }
   else if ((*buffer == 'o' || *buffer == 'O') && len == 1)
   {
     cfg.generator = &generator_counter;
-    out("mode set to COUNTER\r\n");
+    out("\rmode set to COUNTER\r\n");
   }
   else if ((*buffer == 'b' || *buffer == 'B') && len == 1)
   {
     cfg.generator = &generator_birthday;
-    out("mode set to BIRTHDAY\r\n");
+    out("\rmode set to BIRTHDAY\r\n");
   }
   else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
@@ -365,29 +365,29 @@ void handleSerial(char const* buffer, int len)
       localtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
-    out( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
+    out( printbuf("\rClock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if ((*buffer == 'r' ||*buffer == 'R') && len == 1)
   {
     cfg.want_transition_now = 1;
-    out("Asked for a new transition... NOW!\r\n");
+    out("\rAsked for a new transition... NOW!\r\n");
   }
   else if ((*buffer == 'f' || *buffer == 'F') && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
-    out( printbuf("Show FPS mode is %s\r\n", cfg.show_fps ? "ON" : "OFF") );
+    out( printbuf("\rShow FPS mode is %s\r\n", cfg.show_fps ? "ON" : "OFF") );
   }
   else if ((*buffer == 'a' || *buffer == 'A') && len == 1)
   {
     cfg.fading = !cfg.fading;
-    out( printbuf("Clock fading mode is %s\r\n", cfg.fading ? "ON" : "OFF") );
+    out( printbuf("\rClock fading mode is %s\r\n", cfg.fading ? "ON" : "OFF") );
   }
   else if ((*buffer == 'm' ||*buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
-    out( printbuf("Show TIME mode is %s\r\n", cfg.show_time ? "ON" : "OFF") );
+    out( printbuf("\rShow TIME mode is %s\r\n", cfg.show_time ? "ON" : "OFF") );
   }
   else if ((*buffer == 't' || *buffer == 'T') && len == 7)
   {
@@ -403,7 +403,7 @@ void handleSerial(char const* buffer, int len)
     // convert that back to time_t and set the rtc
     newTime = mktime(&tm_target);
     rtc_set(newTime);
-    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
+    out( printbuf("\rTime set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
@@ -425,7 +425,7 @@ void handleSerial(char const* buffer, int len)
     }
     rtc_set(newTime);
     localtime_r(&newTime, &tm_target);
-    out( printbuf("timezone=%ld daylight=%d\n", _timezone, _daylight) );
+    out( printbuf("\rtimezone=%ld daylight=%d\r\n", _timezone, _daylight) );
     out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
