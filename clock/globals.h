@@ -62,6 +62,9 @@ typedef struct
   // other stuff
   int show_fps; 
   int show_time;
+  // gps for sun algo
+  float latitude;
+  float longitude;
 } config_t;
 
 extern config_t cfg;

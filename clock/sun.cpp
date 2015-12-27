@@ -166,8 +166,8 @@ void setSunRiseSunSet(time_t time, float lat, float lng, float offset, float *su
 }
 
 int lastComputedDay = -1;
-float latitude  = 50.7217; /* tourcoing by default */ //FIXME
-float longitude =  3.1592; /* represent ! */ //FIXME
+float latitude  = cfg.latitude;
+float longitude = cfg.longitude;
 
 void setLocation(float lat, float lng)
 {

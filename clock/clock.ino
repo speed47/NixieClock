@@ -39,6 +39,8 @@ config_t cfg = {
   .want_transition_now = 0,
   .show_fps = 0,
   .show_time = 0,
+  .latitude  = 50.7217, // tourcoing by default
+  .longitude =  3.1592, // represent !
 };
 
 char serialBuffer[SERIAL_BUFFER_SIZE];
@@ -317,6 +319,7 @@ int readInt(const char* buffer, int *result)
 inline
 void handleSerial(char const* buffer, int len)
 {
+  out("\r");
   // ignore the 4 BT-182 result codes for now
   if (strncmp(buffer, "ERROR", 5) == 0)
   {
@@ -337,17 +340,17 @@ void handleSerial(char const* buffer, int len)
   else if ((*buffer == 'c' || *buffer == 'C') && len == 1)
   {
     cfg.generator = &generator_clock;
-    out("\rmode set to CLOCK\r\n");
+    out("mode set to CLOCK\r\n");
   }
   else if ((*buffer == 'o' || *buffer == 'O') && len == 1)
   {
     cfg.generator = &generator_counter;
-    out("\rmode set to COUNTER\r\n");
+    out("mode set to COUNTER\r\n");
   }
   else if ((*buffer == 'b' || *buffer == 'B') && len == 1)
   {
     cfg.generator = &generator_birthday;
-    out("\rmode set to BIRTHDAY\r\n");
+    out("mode set to BIRTHDAY\r\n");
   }
   else if (*buffer == 'Y' && (len == 12 || len == 13))
   {
@@ -365,29 +368,29 @@ void handleSerial(char const* buffer, int len)
       localtime_r(&cfg.newyear_target, &tm_target);
     }
     cfg.generator = &generator_newyear;
-    out( printbuf("\rClock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
+    out( printbuf("Clock mode set to NEWYEAR, counting down to: %lu aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       cfg.newyear_target, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
   else if ((*buffer == 'r' ||*buffer == 'R') && len == 1)
   {
     cfg.want_transition_now = 1;
-    out("\rAsked for a new transition... NOW!\r\n");
+    out("Asked for a new transition... NOW!\r\n");
   }
   else if ((*buffer == 'f' || *buffer == 'F') && len == 1)
   {
     cfg.show_fps = !cfg.show_fps;
-    out( printbuf("\rShow FPS mode is %s\r\n", cfg.show_fps ? "ON" : "OFF") );
+    out( printbuf("Show FPS mode is %s\r\n", cfg.show_fps ? "ON" : "OFF") );
   }
   else if ((*buffer == 'a' || *buffer == 'A') && len == 1)
   {
     cfg.fading = !cfg.fading;
-    out( printbuf("\rClock fading mode is %s\r\n", cfg.fading ? "ON" : "OFF") );
+    out( printbuf("Clock fading mode is %s\r\n", cfg.fading ? "ON" : "OFF") );
   }
   else if ((*buffer == 'm' ||*buffer == 'M') && len == 1)
   {
     cfg.show_time = !cfg.show_time;
-    out( printbuf("\rShow TIME mode is %s\r\n", cfg.show_time ? "ON" : "OFF") );
+    out( printbuf("Show TIME mode is %s\r\n", cfg.show_time ? "ON" : "OFF") );
   }
   else if ((*buffer == 't' || *buffer == 'T') && len == 7)
   {
@@ -403,7 +406,7 @@ void handleSerial(char const* buffer, int len)
     // convert that back to time_t and set the rtc
     newTime = mktime(&tm_target);
     rtc_set(newTime);
-    out( printbuf("\rTime set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
+    out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
   }
@@ -425,7 +428,7 @@ void handleSerial(char const* buffer, int len)
     }
     rtc_set(newTime);
     localtime_r(&newTime, &tm_target);
-    out( printbuf("\rtimezone=%ld daylight=%d\r\n", _timezone, _daylight) );
+    out( printbuf("timezone=%ld daylight=%d\r\n", _timezone, _daylight) );
     out( printbuf("Time set to timestamp=%ld aka %02d/%02d/%04d %02d:%02d:%02d\r\n",
       newTime, tm_target.tm_mday, tm_target.tm_mon+1, tm_target.tm_year+1900,
       tm_target.tm_hour, tm_target.tm_min, tm_target.tm_sec) );
@@ -449,6 +452,7 @@ void handleSerial(char const* buffer, int len)
     out("\r\nNixieClock git." EXPAND2STR(GIT_BRANCH) "." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
     out("Built on " EXPAND2STR(BUILD_TIME) "\r\n");
     out("With compiler v" __VERSION__ "\r\n");
+    out( printbuf("Teensy core is running at %d MHz\r\n", F_CPU / 1000000) );
     out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
 
     out( printbuf("RTC compensation is %d\r\n", cfg.rtc_compensate) );
@@ -481,9 +485,13 @@ void handleSerial(char const* buffer, int len)
     int rise_min  = (int)(60 * (*sunRise - (int)*sunRise));
     int set_hour = (int)*sunSet;
     int set_min  = (int)(60 * (*sunSet - (int)*sunSet));
-    out( printbuf( "Today the sun rises at %dh%02d and sets at %dh%02d\r\n", rise_hour, rise_min, set_hour, set_min) );
+    int lat_i = (int)cfg.latitude;
+    int lat_f = (int)(cfg.latitude*10000) - lat_i*10000;
+    int lng_i = (int)cfg.longitude;
+    int lng_f = (int)(cfg.longitude*10000) - lng_i*10000;
+    out( printbuf("GPS coordinates are set to lat:%d.%04d lng:%d.%04d\r\n", lat_i, lat_f, lng_i, lng_f));
+    out( printbuf("Today the sun rises at %dh%02d and sets at %dh%02d there\r\n", rise_hour, rise_min, set_hour, set_min) );
 
-    out( printbuf("Teensy core is running at %d MHz\r\n", F_CPU / 1000000) );
   }
   else if ((*buffer == 'r' || *buffer == 'R') && len > 1)
   {
@@ -532,7 +540,7 @@ void handleSerial(char const* buffer, int len)
                  "Time setup: [T]HHMMSS or [D]<UNIXTAMP> or [D]DDMMYYHHMMSS\r\n"
                  "Set RTC compensation: [R]<value>\r\n"
                  "Toggle options: show [F]ps, show ti[M]e, f[A]ding\r\n"
-                 "Actions: t[R]ansition now, [I]nfo, r[E]boot\r\n"
+                 "Actions: t[R]ansition now, [I]nfo, r[E]boot, debu[G]\r\n"
                  "Simple modes: [B]irthday, [C]lock, c[O]unter\r\n"
                  "Complex modes:\r\n"
                  "- new year: [Y]<UNIXTAMP> or [Y]DDMMYYHHMMSS\r\n"
