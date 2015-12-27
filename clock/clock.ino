@@ -449,9 +449,10 @@ void handleSerial(char const* buffer, int len)
     out("\r\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
     out("Built on " EXPAND2STR(BUILD_TIME) "\r\n");
     out("With compiler v" __VERSION__ "\r\n");
+    out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
+
     out( printbuf("RTC compensation is %d\r\n", cfg.rtc_compensate) );
     out( printbuf("RTC current raw value is %lu\r\n", rtc) );
-    out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
 
     out( printbuf("Current TZ is %s (offset %lds)\r\n",
       _tzname[(tm_local.tm_isdst == 0 || tm_local.tm_isdst == 1) ? tm_local.tm_isdst : 0],
@@ -459,7 +460,7 @@ void handleSerial(char const* buffer, int len)
 
     if (_daylight)
     {
-      out( printbuf("This TZ is DST-aware (currently %sactive)\r\n", tm_local.tm_isdst == 1 ? "" : "NOT ") );
+      out( printbuf("This TZ is DST-aware (currently %stime)\r\n", tm_local.tm_isdst == 1 ? "summer" : "winter") );
     }
     else
     {
