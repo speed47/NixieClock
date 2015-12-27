@@ -514,10 +514,14 @@ void handleSerial(char const* buffer, int len)
     delay(1000); // justin case
     out("BUG: reboot failed!?\r\n"); // never reached
   }
-  else if ((*buffer == 'g' || *buffer == 'G') && len == 2)
+  else if (*buffer == 'g' || *buffer == 'G')
   {
-    buffer++;
-    int value = *buffer - '0';
+    int value = -1;
+    if (len == 2)
+    {
+      buffer++;
+      value = *buffer - '0';
+    }
     if (value < 0 || value > 3)
     {
       out( printbuf("Invalid value %d, expected one of 0 1 2 3\r\n", value) );
