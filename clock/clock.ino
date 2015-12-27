@@ -446,7 +446,7 @@ void handleSerial(char const* buffer, int len)
     struct tm tm_local;
     localtime_r(&rtc, &tm_local);
     gmtime_r(&rtc, &tm_utc);
-    out("\r\nNixieClock git." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
+    out("\r\nNixieClock git." EXPAND2STR(GIT_BRANCH) "." EXPAND2STR(GIT_REVISION) "." EXPAND2STR(GIT_DIRTY) "\r\n");
     out("Built on " EXPAND2STR(BUILD_TIME) "\r\n");
     out("With compiler v" __VERSION__ "\r\n");
     out( printbuf("Uptime is %s\r\n", seconds2duration(uptime)) );
